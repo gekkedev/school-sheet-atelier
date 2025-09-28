@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "format": "prettier --write .",
+    "postinstall": "pnpm format",
+    "update-interactive": "pnpm update --interactive --latest && pnpm run postinstall"
   },
   "dependencies": {
     "next": "15.5.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
