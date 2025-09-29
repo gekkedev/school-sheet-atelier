@@ -84,10 +84,10 @@ export default function Home() {
           </span>
           <div className="flex flex-col gap-4">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-              Kuratiertes Themenarchiv fuer Deutsch und Religion
+              Kuratiertes Themenarchiv für Deutsch und Religion
             </h1>
             <p className="max-w-3xl text-base text-slate-600 sm:text-lg">
-              Waehle ein Fach, filtere nach Klassenstufe und erhalte inspirierende Themenbausteine fuer Arbeitsblaetter,
+              Wähle ein Fach, filtere nach Klassenstufe und erhalte inspirierende Themenbausteine für Arbeitsblätter,
               Projekte oder Unterrichtsreihen. Alle Inhalte sind auf die Klassen 1-4 zugeschnitten und lassen sich
               direkt mit dem Generator kombinieren.
             </p>
@@ -158,7 +158,7 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Klassenstufe filtern</span>
-              <p className="text-sm text-slate-600">Zeigt nur Themen, die zur ausgewaehlten Klassenstufe passen.</p>
+              <p className="text-sm text-slate-600">Zeigt nur Themen, die zur ausgewählten Klassenstufe passen.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {gradeFilters.map(grade => {
