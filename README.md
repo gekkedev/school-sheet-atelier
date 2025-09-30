@@ -41,9 +41,12 @@ pnpm dev       # runs on http://localhost:3000
 ## Model Choices (MLC/WebLLM IDs)
 
 - Default: `Llama-3.2-3B-Instruct-q4f32_1-MLC` (balanced quality, ≈1.4 GB download).
-- Fallback: `Llama-3.2-1B-Instruct-q4f16_1-MLC` (fallback for mid-range GPUs, ≈0.7 GB download).\n- Optional low-resource: `TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC` (fits very constrained GPUs, ≈0.55 GB).
+- Fallback: `Llama-3.2-1B-Instruct-q4f16_1-MLC` (fallback for mid-range GPUs, ≈0.7 GB download).
+- Optional low-resource: `TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC` (fits very constrained GPUs, ≈0.55 GB).
 
 You can change the default in `lib/model.ts` or via `NEXT_PUBLIC_MODEL_ID`.
+
+> Hinweis: Die IDs werden über eine eigene WebLLM-App-Konfiguration eingebunden, damit die Llama-3.2-Modelle auch dann geladen werden, wenn sie (noch) nicht im vorgefertigten Paket enthalten sind.
 
 ---
 

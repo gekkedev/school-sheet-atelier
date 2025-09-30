@@ -3,18 +3,23 @@ export type WebGPUSupport = {
   reason?: string
 }
 
+type NavigatorWithGPU = Navigator & {
+  gpu?: unknown
+}
+
 export function detectWebGPU(): WebGPUSupport {
   if (typeof navigator === "undefined") {
     return { supported: false, reason: "Client-side only" }
   }
 
-  const supported = typeof navigator.gpu !== "undefined"
+  const nav = navigator as NavigatorWithGPU
+  const supported = typeof nav.gpu !== "undefined"
   if (supported) {
     return { supported: true }
   }
 
   let reason = "WebGPU wird von diesem Browser nicht unterstützt."
-  const ua = navigator.userAgent.toLowerCase()
+  const ua = (navigator.userAgent ?? "").toLowerCase()
   if (ua.includes("safari")) {
     reason = "Safari benötigt Version 17 oder neuer mit aktivierter WebGPU-Unterstützung."
   } else if (ua.includes("firefox")) {
