@@ -7,6 +7,9 @@ settings:
 importers:
   .:
     dependencies:
+      "@mlc-ai/web-llm":
+        specifier: 0.2.48
+        version: 0.2.48
       next:
         specifier: 15.5.4
         version: 15.5.4(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -223,6 +226,10 @@ packages:
   "@jridgewell/trace-mapping@0.3.31":
     resolution:
       { integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw== }
+
+  "@mlc-ai/web-llm@0.2.48":
+    resolution:
+      { integrity: sha512-KzHL13EEoyXeDqpMx6p/1Im6T4C6t31yrI9VN9VPcWD40BAiAqVZhR8E85PQ6aNZEAqISlfJTryuP7L+0IJ2+g== }
 
   "@next/env@15.5.4":
     resolution:
@@ -516,6 +523,11 @@ packages:
       { integrity: sha512-xi6IyHML+c9+Q3W0S4fCQJOym42pyurFiJUHEcEyHS0CeKzia4yZDEsLlqOFykxOdHpNy0NmvVO31vcSqAxJCg== }
     engines: { node: ">= 12.0.0" }
 
+  loglevel@1.9.2:
+    resolution:
+      { integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg== }
+    engines: { node: ">= 0.6.0" }
+
   magic-string@0.30.19:
     resolution:
       { integrity: sha512-2N21sPY9Ws53PZvsEpVtNuSW+ScYbQdp4b9qUaL+9QkHUrGFKo56Lg9Emg5s9V/qrtNBmiR01sYhUOwu3H+VOw== }
@@ -776,6 +788,10 @@ snapshots:
       "@jridgewell/resolve-uri": 3.1.2
       "@jridgewell/sourcemap-codec": 1.5.5
 
+  "@mlc-ai/web-llm@0.2.48":
+    dependencies:
+      loglevel: 1.9.2
+
   "@next/env@15.5.4": {}
 
   "@next/swc-darwin-arm64@15.5.4":
@@ -953,6 +969,8 @@ snapshots:
       lightningcss-linux-x64-musl: 1.30.1
       lightningcss-win32-arm64-msvc: 1.30.1
       lightningcss-win32-x64-msvc: 1.30.1
+
+  loglevel@1.9.2: {}
 
   magic-string@0.30.19:
     dependencies:

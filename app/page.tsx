@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { SUBJECTS, type Grade, type Subject, type SubjectId } from "@/data/topics"
+import { ModelLoader } from "@/components/model-loader"
 
 type GradeFilter = Grade | "Alle"
 
@@ -103,6 +104,8 @@ export default function Home() {
             </span>
           </div>
         </header>
+
+        <ModelLoader />
 
         <section className="grid gap-4 sm:grid-cols-2">
           {SUBJECTS.map(subject => {
