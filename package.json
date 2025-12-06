@@ -11,18 +11,18 @@
     "update-interactive": "pnpm update --interactive --latest && pnpm run postinstall"
   },
   "dependencies": {
-    "next": "15.5.4",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "@mlc-ai/web-llm": "0.2.48"
+    "@mlc-ai/web-llm": "0.2.80",
+    "next": "16.0.7",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "prettier": "^3.6.2",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "prettier": "^3.7.4",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
   }
 }

@@ -270,6 +270,8 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
         return initPromiseRef.current
       }
 
+      setStatus("initializing")
+
       const attemptQueue = buildAttemptQueue(preferredModelId)
 
       const initPromise: Promise<MLCEngine> = (async () => {

@@ -2,7 +2,15 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react"
 import { useWebLLMContext } from "@/context/web-llm-context"
-import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, MODEL_LABELS, MODEL_METADATA, MODEL_ORDER } from "@/lib/model"
+import {
+  APPROVED_MODELS,
+  DEFAULT_MODEL_ID,
+  FALLBACK_MODEL_ID,
+  MODEL_APP_CONFIG,
+  MODEL_LABELS,
+  MODEL_METADATA,
+  MODEL_SELECTION_KEY
+} from "@/lib/model"
 
 function formatStatus(status: string) {
   switch (status) {
@@ -27,18 +35,59 @@ export function ModelLoader() {
     useWebLLMContext()
   const [autoStartedFor, setAutoStartedFor] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [showExperimental, setShowExperimental] = useState(false)
 
-  const modelOptions = useMemo(
-    () =>
-      MODEL_ORDER.map(modelId => ({
+  const modelOptions = useMemo(() => {
+    const availableModels = showExperimental ? MODEL_APP_CONFIG.model_list.map(m => m.model_id) : APPROVED_MODELS
+
+    return availableModels.map(modelId => {
+      const record = MODEL_APP_CONFIG.model_list.find(m => m.model_id === modelId)
+      const vram = record?.vram_required_MB
+      const contextWindow = record?.overrides?.context_window_size
+
+      const existingMeta = MODEL_METADATA[modelId]
+      if (existingMeta) {
+        return {
+          id: modelId,
+          label: MODEL_LABELS[modelId] ?? modelId,
+          meta: {
+            ...existingMeta,
+            contextWindow: contextWindow ?? existingMeta.contextWindow
+          }
+        }
+      }
+
+      return {
         id: modelId,
         label: MODEL_LABELS[modelId] ?? modelId,
-        meta: MODEL_METADATA[modelId]
-      })),
-    []
-  )
+        meta: {
+          downloadSize: vram ? `~${Math.round(vram)} MB (VRAM)` : "?",
+          sizeBytes: 0,
+          contextWindow: contextWindow ?? 0
+        }
+      }
+    })
+  }, [showExperimental])
 
-  const selectedMeta = MODEL_METADATA[selectedModelId]
+  const selectedMeta = useMemo(() => {
+    const record = MODEL_APP_CONFIG.model_list.find(m => m.model_id === selectedModelId)
+    const vram = record?.vram_required_MB
+    const contextWindow = record?.overrides?.context_window_size
+
+    const existingMeta = MODEL_METADATA[selectedModelId]
+    if (existingMeta) {
+      return {
+        ...existingMeta,
+        contextWindow: contextWindow ?? existingMeta.contextWindow
+      }
+    }
+
+    return {
+      downloadSize: vram ? `~${Math.round(vram)} MB (VRAM)` : "?",
+      sizeBytes: 0,
+      contextWindow: contextWindow ?? 0
+    }
+  }, [selectedModelId])
   const selectedLabel = MODEL_LABELS[selectedModelId] ?? selectedModelId
   const isSelectedCached = isModelCached(selectedModelId)
   const statusLabel = formatStatus(status)
@@ -50,6 +99,9 @@ export function ModelLoader() {
   }, [selectedModelId])
 
   useEffect(() => {
+    if (!hydrated) {
+      return
+    }
     if (!webgpu.supported) {
       return
     }
@@ -64,11 +116,21 @@ export function ModelLoader() {
     }
     setAutoStartedFor(selectedModelId)
     initialize(selectedModelId).catch(console.error)
-  }, [autoStartedFor, initialize, isSelectedCached, selectedModelId, status, webgpu.supported])
+  }, [autoStartedFor, hydrated, initialize, isSelectedCached, selectedModelId, status, webgpu.supported])
 
   useEffect(() => {
+    const stored = window.localStorage.getItem(MODEL_SELECTION_KEY)
+    if (stored) {
+      setSelectedModelId(stored)
+    }
     setHydrated(true)
   }, [])
+
+  useEffect(() => {
+    if (hydrated && selectedModelId) {
+      window.localStorage.setItem(MODEL_SELECTION_KEY, selectedModelId)
+    }
+  }, [selectedModelId, hydrated])
 
   const handleLoad = () => {
     setAutoStartedFor(selectedModelId)
@@ -96,9 +158,19 @@ export function ModelLoader() {
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 md:w-72">
-            <label htmlFor="model-select" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Modell auswählen
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="model-select" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Modell auswählen
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowExperimental(!showExperimental)}
+                className="text-[10px] text-slate-400 hover:text-slate-600"
+                title="Zeige alle verfügbaren Modelle (experimentell)"
+              >
+                {showExperimental ? "Nur geprüfte" : "Alle anzeigen"}
+              </button>
+            </div>
             <select
               id="model-select"
               value={selectedModelId}
@@ -107,6 +179,7 @@ export function ModelLoader() {
             >
               {modelOptions.map(option => (
                 <option key={option.id} value={option.id}>
+                  {isModelCached(option.id) ? "✓ " : ""}
                   {option.label} · {option.meta.downloadSize}
                 </option>
               ))}
@@ -137,10 +210,24 @@ export function ModelLoader() {
                 Geladenes Modell: <span className="font-semibold text-slate-600">{activeLabel}</span>
               </span>
             )}
-            <span className="text-[11px] text-slate-400">
-              Im Cache: {cachedModels.length > 0 ? cachedModels.map(id => MODEL_LABELS[id] ?? id).join(", ") : "keines"}
-            </span>
           </div>
+          <span className="text-xs text-slate-400">
+            Im Cache:{" "}
+            {cachedModels.length > 0
+              ? cachedModels.map((id, index) => (
+                  <span key={id}>
+                    {index > 0 && ", "}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModelId(id)}
+                      className="hover:text-slate-600 hover:underline"
+                    >
+                      {MODEL_LABELS[id] ?? id}
+                    </button>
+                  </span>
+                ))
+              : "keines"}
+          </span>
         </div>
 
         {!webgpu.supported && (
@@ -152,31 +239,25 @@ export function ModelLoader() {
 
         {webgpu.supported && (
           <div className="flex flex-col gap-4">
-            <button
-              type="button"
-              onClick={handleLoad}
-              disabled={status === "initializing" || status === "unsupported" || isGenerating}
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-300 disabled:text-slate-600"
-            >
-              {status === "ready"
-                ? "Modell bereit"
-                : status === "initializing"
-                  ? "Modell wird geladen"
+            {(status === "initializing" || progress
+              ? progress?.modelId && progress.modelId !== selectedModelId
+              : !(status === "ready" && activeModelId === selectedModelId)) && (
+              <button
+                type="button"
+                onClick={handleLoad}
+                disabled={status === "unsupported" || isGenerating}
+                className="cursor-pointer inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-300 disabled:text-slate-600"
+              >
+                {status === "ready" || (progress && progress.modelId !== selectedModelId)
+                  ? "Modell wechseln"
                   : "Modell laden"}
-            </button>
+              </button>
+            )}
 
             {(status === "initializing" || progress) && (
-              <div className="flex flex-col gap-2">
-                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-3 rounded-full bg-slate-900 transition-all"
-                    style={{ width: `${Math.round((progress?.value ?? 0) * 100)}%` }}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                  <span>{progress?.message ?? "Lade Modellartefakte"}</span>
-                  <span className="font-semibold">{Math.round((progress?.value ?? 0) * 100)}%</span>
-                </div>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600" />
+                <span>{progress?.message ?? "Lade Modellartefakte"}</span>
               </div>
             )}
 
