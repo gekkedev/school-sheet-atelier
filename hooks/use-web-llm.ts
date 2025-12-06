@@ -7,7 +7,6 @@ import {
   DEFAULT_MODEL_ID,
   DEFAULT_TEMPERATURE,
   FALLBACK_MODEL_ID,
-  LOW_RESOURCE_MODEL_ID,
   MODEL_APP_CONFIG,
   MODEL_CACHED_FLAG_KEY,
   MODEL_LABELS,
@@ -110,20 +109,12 @@ function readCachedModels(defaultModelId: string): string[] {
 
 function buildAttemptQueue(preferredModelId: string): string[] {
   const queue: string[] = [preferredModelId]
-  if (preferredModelId === DEFAULT_MODEL_ID) {
-    queue.push(FALLBACK_MODEL_ID, LOW_RESOURCE_MODEL_ID)
-  } else if (preferredModelId === FALLBACK_MODEL_ID) {
-    queue.push(LOW_RESOURCE_MODEL_ID)
-  }
 
   if (!queue.includes(DEFAULT_MODEL_ID)) {
     queue.push(DEFAULT_MODEL_ID)
   }
   if (!queue.includes(FALLBACK_MODEL_ID)) {
     queue.push(FALLBACK_MODEL_ID)
-  }
-  if (!queue.includes(LOW_RESOURCE_MODEL_ID)) {
-    queue.push(LOW_RESOURCE_MODEL_ID)
   }
 
   return Array.from(new Set(queue))
@@ -215,6 +206,8 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
     activeModelIdRef.current = modelId
     setActiveModelIdState(modelId)
   }, [])
+
+  const getCurrentModelId = useCallback(() => activeModelIdRef.current, [])
 
   const loadModel = useCallback(
     async (targetModelId: string) => {
@@ -357,6 +350,7 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
     activeModelId,
     engine: engineRef.current,
     initialize,
-    generate
+    generate,
+    getCurrentModelId
   }
 }

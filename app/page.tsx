@@ -1,10 +1,23 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { SUBJECTS, type Grade, type Subject, type SubjectId } from "@/data/topics"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ModelLoader } from "@/components/model-loader"
+import { WebLLMProvider, useWebLLMContext } from "@/context/web-llm-context"
+import { MODEL_LABELS } from "@/lib/model"
+import { SUBJECTS, type Grade, type Subject, type SubjectId, type Topic } from "@/data/topics"
 
 type GradeFilter = Grade | "Alle"
+
+type GenerationStatus = "idle" | "running" | "success" | "error"
+
+type GenerationState = {
+  status: GenerationStatus
+  topic: Topic | null
+  grade: Grade | null
+  modelId: string | null
+  output: string
+  error: string | null
+}
 
 function cx(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ")
@@ -35,9 +48,44 @@ function getTheme(subjectId: SubjectId) {
     cardShadow: "shadow-sky-500/10"
   }
 }
+
 export default function Home() {
+  return (
+    <WebLLMProvider>
+      <PageContent />
+    </WebLLMProvider>
+  )
+}
+
+function PageContent() {
   const [activeSubjectId, setActiveSubjectId] = useState<SubjectId>("deutsch")
   const [activeGrade, setActiveGrade] = useState<GradeFilter>("Alle")
+  const webllm = useWebLLMContext()
+  const {
+    status: engineStatus,
+    initialize,
+    generate,
+    isGenerating,
+    progress,
+    webgpu,
+    activeModelId,
+    getCurrentModelId
+  } = webllm
+
+  const [generation, setGeneration] = useState<GenerationState>({
+    status: "idle",
+    topic: null,
+    grade: null,
+    modelId: null,
+    output: "",
+    error: null
+  })
+  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle")
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
 
   useEffect(() => {
     setActiveGrade("Alle")
@@ -67,9 +115,121 @@ export default function Home() {
     return activeSubject.topics.filter(topic => topic.grades.includes(activeGrade)).length
   }, [activeSubject, activeGrade])
 
-  const gradeFilters: GradeFilter[] = ["Alle", ...activeSubject.grades]
+  const determineGrade = useCallback(
+    (topic: Topic): Grade => {
+      if (activeGrade !== "Alle" && topic.grades.includes(activeGrade)) {
+        return activeGrade
+      }
+      return (topic.grades[0] ?? "3") as Grade
+    },
+    [activeGrade]
+  )
 
-  const allTopics = useMemo(() => SUBJECTS.map(subject => subject.topics).flat(), [SUBJECTS])
+  const handleGenerate = useCallback(
+    async (topic: Topic) => {
+      const gradeForPrompt = determineGrade(topic)
+      setGeneration({
+        status: "running",
+        topic,
+        grade: gradeForPrompt,
+        modelId: getCurrentModelId() ?? null,
+        output: "",
+        error: null
+      })
+      setCopyStatus("idle")
+
+      try {
+        await initialize()
+
+        const systemPrompt =
+          "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen. Jede Ausgabe enthält strukturierte Aufgaben, klare Anweisungen und einen vollständigen Lösungsteil."
+
+        const focusLine = topic.focus.length > 0 ? `Fokusthemen: ${topic.focus.join(", ")}.` : ""
+        const impulses =
+          topic.samplePrompts.length > 0
+            ? `Inspiration aus der Themenbibliothek:\n- ${topic.samplePrompts.join("\n- ")}`
+            : ""
+
+        const userPrompt = [
+          `Fach: ${activeSubject.title}`,
+          `Klassenstufe: ${gradeForPrompt}`,
+          `Thema: ${topic.label}`,
+          `Beschreibung: ${topic.description}`,
+          focusLine,
+          impulses,
+          "Erstelle ein vollständiges Unterrichtsmaterial in deutscher Sprache mit folgenden Abschnitten:",
+          "1. Titel",
+          "2. Lernziele (2-3 Bulletpoints)",
+          "3. Einleitungstext für die Lernenden (2-3 Sätze)",
+          "4. Aufgabenbereich mit mindestens drei Aufgaben (markiere jede Aufgabe mit leicht/mittel/schwer und nenne benötigtes Material)",
+          "5. Differenzierungsidee (für Förder- und Forderkinder)",
+          "6. Lösungsteil mit eindeutigen Antworten"
+        ]
+          .filter(Boolean)
+          .join("\n\n")
+
+        const response = await generate({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.4
+        })
+
+        const usedModelId = getCurrentModelId() ?? activeModelId ?? null
+        const output = response.text.trim()
+
+        setGeneration({
+          status: "success",
+          topic,
+          grade: gradeForPrompt,
+          modelId: usedModelId,
+          output: output.length > 0 ? output : "⚠️ Das Modell hat keine Ausgabe geliefert.",
+          error: null
+        })
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : typeof err === "string" ? err : "Unbekannter Fehler bei der Generierung."
+        const usedModelId = getCurrentModelId() ?? activeModelId ?? null
+        setGeneration({
+          status: "error",
+          topic,
+          grade: gradeForPrompt,
+          modelId: usedModelId,
+          output: "",
+          error: message
+        })
+      }
+    },
+    [activeModelId, activeSubject.title, determineGrade, generate, getCurrentModelId, initialize]
+  )
+
+  const handleCopy = useCallback(async () => {
+    if (!generation.output) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(generation.output)
+      setCopyStatus("success")
+      setTimeout(() => setCopyStatus("idle"), 2000)
+    } catch (error) {
+      console.warn("Copy failed", error)
+      setCopyStatus("error")
+      setTimeout(() => setCopyStatus("idle"), 2500)
+    }
+  }, [generation.output])
+
+  const gradeFilters: GradeFilter[] = ["Alle", ...activeSubject.grades]
+  const allTopics = useMemo(() => SUBJECTS.flatMap(subject => subject.topics), [])
+
+  const selectedModelLabel = generation.modelId ? (MODEL_LABELS[generation.modelId] ?? generation.modelId) : null
+  const activeModelLabel = activeModelId ? (MODEL_LABELS[activeModelId] ?? activeModelId) : "Kein Modell geladen"
+  const isEngineBusy = engineStatus === "initializing" || engineStatus === "checking"
+
+  if (!hydrated) {
+    // Render a static placeholder during SSR
+    return <div className="h-20 bg-gray-100 animate-pulse" />
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
@@ -107,6 +267,58 @@ export default function Home() {
 
         <ModelLoader />
 
+        <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">Generator</span>
+            <h2 className="text-xl font-semibold text-slate-900">KI-Entwurf aus einem Thema starten</h2>
+            <p className="text-sm text-slate-600">
+              Aktives Modell: {activeModelLabel}. Temperatur 0,4 (fokussiert auf Zuverlässigkeit).
+            </p>
+          </div>
+
+          {!webgpu.supported && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <p className="font-semibold">WebGPU benötigt</p>
+              <p>{webgpu.reason ?? "Dieser Browser unterstützt WebGPU nicht."}</p>
+            </div>
+          )}
+
+          {engineStatus === "initializing" && progress && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              <span className="font-semibold">{progress.message ?? "Modell wird geladen"}</span>
+              <span className="ml-2">{Math.round((progress.value ?? 0) * 100)}%</span>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+            {generation.status === "idle" && (
+              <p>
+                Wähle unten ein Thema und klicke auf <span className="font-semibold">„KI-Entwurf erstellen“</span>, um
+                ein komplettes Arbeitsblatt zu erzeugen. Fokus: strukturierte Aufgaben, klare Instruktionen und
+                Lösungsteil.
+              </p>
+            )}
+            {generation.status === "running" && generation.topic && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs uppercase tracking-wide text-slate-500">Generierung läuft …</span>
+                <span className="font-semibold text-slate-800">
+                  {generation.topic.label} · Klasse {generation.grade}
+                </span>
+                <span className="text-xs text-slate-500">Bitte warten – das Modell erstellt den Entwurf.</span>
+              </div>
+            )}
+            {generation.status === "success" && generation.topic && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs uppercase tracking-wide text-slate-500">Generierung abgeschlossen</span>
+                <span className="font-semibold text-slate-800">
+                  {generation.topic.label} · Klasse {generation.grade}
+                </span>
+                <span className="text-xs text-slate-500">Das Arbeitsblatt wurde erfolgreich erstellt.</span>
+              </div>
+            )}
+          </div>
+        </section>
+
         <section className="grid gap-4 sm:grid-cols-2">
           {SUBJECTS.map(subject => {
             const isActive = subject.id === activeSubject.id
@@ -124,60 +336,43 @@ export default function Home() {
               >
                 <span
                   className={cx(
-                    "text-xs font-semibold uppercase tracking-wide",
-                    isActive ? "text-slate-200" : theme.badge
+                    "inline-flex items-center gap-3 text-left text-lg font-semibold",
+                    isActive ? "text-white" : "text-slate-800"
                   )}
                 >
-                  Fach
-                </span>
-                <h2 className={cx("text-2xl font-semibold", isActive ? "text-white" : "text-slate-900")}>
                   {subject.title}
-                </h2>
-                <p className={cx("text-sm leading-relaxed", isActive ? "text-white/80" : "text-slate-600")}>
-                  {subject.tagline}
-                </p>
-                <p className={cx("text-sm leading-relaxed", isActive ? "text-white/70" : "text-slate-600")}>
-                  {subject.description}
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {subject.grades.map(grade => (
-                    <span
-                      key={subject.id + "-grade-" + grade}
-                      className={cx(
-                        "rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide",
-                        isActive ? "border-white/40 text-white/80" : "border-slate-200 text-slate-600"
-                      )}
-                    >
-                      Kl. {grade}
-                    </span>
-                  ))}
-                </div>
+                  <span
+                    className={cx(
+                      "rounded-full px-2 py-0.5 text-xs font-semibold transition",
+                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600 group-hover:text-slate-800"
+                    )}
+                  >
+                    {subject.topics.length}
+                  </span>
+                </span>
+                <p className={cx("text-sm", isActive ? "text-slate-200" : "text-slate-600")}>{subject.tagline}</p>
               </button>
             )
           })}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Klassenstufe filtern</span>
-              <p className="text-sm text-slate-600">Zeigt nur Themen, die zur ausgewählten Klassenstufe passen.</p>
-            </div>
+        <section className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-2">
               {gradeFilters.map(grade => {
-                const isActive = grade === activeGrade
-                const label = grade === "Alle" ? "Alle Klassen" : "Klasse " + grade
-                const count = grade === "Alle" ? activeSubject.topics.length : gradeCounts[grade as Grade]
+                const isActive = activeGrade === grade
+                const label = grade === "Alle" ? "Alle Klassen" : `Klasse ${grade}`
+                const count = grade === "Alle" ? visibleTopicCount : gradeCounts[grade]
                 return (
                   <button
-                    key={"grade-filter-" + grade}
+                    key={grade}
                     type="button"
                     onClick={() => setActiveGrade(grade)}
                     className={cx(
-                      "group inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition",
+                      "group inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
                       isActive
-                        ? theme.chipActive
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                        ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                        : "border-slate-200 bg-white/80 text-slate-600 hover:border-slate-300 hover:text-slate-800"
                     )}
                   >
                     <span>{label}</span>
@@ -231,57 +426,70 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  {topicsInCategory.map(topic => (
-                    <article
-                      key={topic.id}
-                      className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-slate-900/10"
-                    >
-                      <div className="flex flex-col gap-2">
-                        <h4 className="text-lg font-semibold text-slate-900">{topic.label}</h4>
-                        <p className="text-sm leading-relaxed text-slate-600">{topic.description}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {topic.grades.map(grade => (
-                          <span
-                            key={topic.id + "-grade-" + grade}
-                            className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600"
-                          >
-                            Kl. {grade}
-                          </span>
-                        ))}
-                      </div>
-                      {topic.focus.length > 0 && (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Fokus</span>
-                          <div className="flex flex-wrap gap-2">
-                            {topic.focus.map(item => (
-                              <span
-                                key={topic.id + "-focus-" + item}
-                                className={cx("rounded-full px-2.5 py-1 text-xs font-semibold", theme.focusChip)}
-                              >
-                                {item}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {topic.samplePrompts.length > 0 && (
+                  {topicsInCategory.map(topic => {
+                    const isTopicLoading = generation.status === "running" && generation.topic?.id === topic.id
+                    return (
+                      <article
+                        key={topic.id}
+                        className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-slate-900/10"
+                      >
                         <div className="flex flex-col gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            KI-Impulse
-                          </span>
-                          <ul className="flex flex-col gap-2 text-sm text-slate-600">
-                            {topic.samplePrompts.map(prompt => (
-                              <li key={topic.id + "-prompt-" + prompt} className="flex items-start gap-2">
-                                <span className={cx("mt-1 h-1.5 w-1.5 rounded-full", theme.bullet)} />
-                                <span>{prompt}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          <h4 className="text-lg font-semibold text-slate-900">{topic.label}</h4>
+                          <p className="text-sm leading-relaxed text-slate-600">{topic.description}</p>
                         </div>
-                      )}
-                    </article>
-                  ))}
+                        <div className="flex flex-wrap gap-2">
+                          {topic.grades.map(grade => (
+                            <span
+                              key={topic.id + "-grade-" + grade}
+                              className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600"
+                            >
+                              Kl. {grade}
+                            </span>
+                          ))}
+                        </div>
+                        {topic.focus.length > 0 && (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Fokus</span>
+                            <div className="flex flex-wrap gap-2">
+                              {topic.focus.map(item => (
+                                <span
+                                  key={topic.id + "-focus-" + item}
+                                  className={cx("rounded-full px-2.5 py-1 text-xs font-semibold", theme.focusChip)}
+                                >
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {topic.samplePrompts.length > 0 && (
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              KI-Impulse
+                            </span>
+                            <ul className="flex flex-col gap-2 text-sm text-slate-600">
+                              {topic.samplePrompts.map(prompt => (
+                                <li key={topic.id + "-prompt-" + prompt} className="flex items-start gap-2">
+                                  <span className={cx("mt-1 h-1.5 w-1.5 rounded-full", theme.bullet)} />
+                                  <span>{prompt}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <div className="mt-auto flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleGenerate(topic)}
+                            disabled={isGenerating || isEngineBusy || !webgpu.supported}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-300 disabled:text-slate-600"
+                          >
+                            {isTopicLoading ? "Generiere …" : "KI-Entwurf erstellen"}
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })}
                 </div>
               </div>
             )

@@ -1,15 +1,8 @@
 "use client"
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react"
-import { useWebLLM } from "@/hooks/use-web-llm"
-import {
-  DEFAULT_MODEL_ID,
-  FALLBACK_MODEL_ID,
-  LOW_RESOURCE_MODEL_ID,
-  MODEL_LABELS,
-  MODEL_METADATA,
-  MODEL_ORDER
-} from "@/lib/model"
+import { useWebLLMContext } from "@/context/web-llm-context"
+import { DEFAULT_MODEL_ID, FALLBACK_MODEL_ID, MODEL_LABELS, MODEL_METADATA, MODEL_ORDER } from "@/lib/model"
 
 function formatStatus(status: string) {
   switch (status) {
@@ -31,8 +24,9 @@ function formatStatus(status: string) {
 export function ModelLoader() {
   const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID)
   const { status, progress, error, webgpu, initialize, activeModelId, cachedModels, isModelCached, isGenerating } =
-    useWebLLM()
+    useWebLLMContext()
   const [autoStartedFor, setAutoStartedFor] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false)
 
   const modelOptions = useMemo(
     () =>
@@ -72,6 +66,10 @@ export function ModelLoader() {
     initialize(selectedModelId).catch(console.error)
   }, [autoStartedFor, initialize, isSelectedCached, selectedModelId, status, webgpu.supported])
 
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
   const handleLoad = () => {
     setAutoStartedFor(selectedModelId)
     initialize(selectedModelId).catch(console.error)
@@ -79,6 +77,11 @@ export function ModelLoader() {
 
   const handleModelChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedModelId(event.target.value)
+  }
+
+  if (!hydrated) {
+    // Render a placeholder during SSR to avoid mismatches
+    return <div className="h-20 bg-gray-100 animate-pulse" />
   }
 
   return (
@@ -89,8 +92,7 @@ export function ModelLoader() {
             <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">On-Device LLM</span>
             <h2 className="text-xl font-semibold text-slate-900">Lade das WebLLM-Modell in deinen Browser</h2>
             <p className="text-sm text-slate-600">
-              Standard: {MODEL_LABELS[DEFAULT_MODEL_ID]}. Fallback: {MODEL_LABELS[FALLBACK_MODEL_ID]}. Optional leichtes
-              Modell: {MODEL_LABELS[LOW_RESOURCE_MODEL_ID]}.
+              Standard: {MODEL_LABELS[DEFAULT_MODEL_ID]}. Fallback: {MODEL_LABELS[FALLBACK_MODEL_ID]}.
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 md:w-72">
