@@ -325,9 +325,9 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
 
         if (onChunk) {
           // Stream mode
-          const asyncChunkGenerator = await engine.chat.completions.create(
+          const asyncChunkGenerator = (await engine.chat.completions.create(
             request as Parameters<typeof engine.chat.completions.create>[0]
-          ) as AsyncIterable<any>
+          )) as AsyncIterable<any>
 
           let fullText = ""
           let chunkCount = 0

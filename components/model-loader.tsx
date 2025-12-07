@@ -162,7 +162,10 @@ export function ModelLoader({
   }
 
   return (
-    <section data-model-loader className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
+    <section
+      data-model-loader
+      className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5"
+    >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-1">

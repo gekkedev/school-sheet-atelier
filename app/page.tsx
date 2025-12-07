@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, memo } from "react"
 import { ModelLoader } from "@/components/model-loader"
+import { PDFPreview } from "@/components/pdf-preview"
 import { WebLLMProvider, useWebLLMContext } from "@/context/web-llm-context"
 import { MODEL_LABELS } from "@/lib/model"
+import { exportToPDF, exportToDOCX } from "@/lib/export"
 import { SUBJECTS, type Grade, type Subject, type SubjectId, type Topic } from "@/data/topics"
 
 type GradeFilter = Grade | "Alle"
@@ -39,6 +41,158 @@ const QUEUE_STORAGE_KEY = "school-sheet-queue"
 function cx(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ")
 }
+
+interface QueueItemProps {
+  item: GenerationItem
+  isExpanded: boolean
+  copyStatus: "idle" | "success" | "error"
+  onToggleExpanded: () => void
+  onCancel: () => void
+  onCopy: (output: string) => void
+  onDelete: () => void
+  onModelClick: (modelId: string) => void
+  onDownloadPDF: () => void
+  onDownloadDOCX: () => void
+}
+
+const QueueItem = memo(function QueueItem({
+  item,
+  isExpanded,
+  copyStatus,
+  onToggleExpanded,
+  onCancel,
+  onCopy,
+  onDelete,
+  onModelClick,
+  onDownloadPDF,
+  onDownloadDOCX
+}: QueueItemProps) {
+  const hasContent = item.output || (item.status === "error" && item.error)
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4">
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => hasContent && onToggleExpanded()}
+          className={cx("flex flex-1 flex-col gap-1 text-left", hasContent ? "cursor-pointer" : "")}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {item.status === "pending" && "Wartend"}
+              {item.status === "running" && "Live-Vorschau"}
+              {item.status === "success" && "Ergebnis"}
+              {item.status === "error" && "Fehler"}
+              {item.status === "cancelled" && "Abgebrochen"}
+            </span>
+            {hasContent && (
+              <>
+                <svg
+                  className={cx("h-4 w-4 text-slate-400 transition-transform", isExpanded ? "rotate-180" : "rotate-0")}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </>
+            )}
+          </div>
+          <span className="font-semibold text-slate-800">
+            {item.topic.label} · Klasse {item.grade}
+          </span>
+          {item.specificPrompt && (
+            <span className="text-xs italic text-slate-500 line-clamp-2">Impuls: {item.specificPrompt}</span>
+          )}
+          {item.modelId && (
+            <span className="text-xs text-slate-500">
+              Modell:{" "}
+              <span
+                onClick={e => {
+                  e.stopPropagation()
+                  onModelClick(item.modelId!)
+                }}
+                className="cursor-pointer hover:text-slate-700 hover:underline"
+              >
+                {MODEL_LABELS[item.modelId] ?? item.modelId}
+              </span>
+            </span>
+          )}
+        </button>
+        <div className="flex items-center gap-3">
+          {(item.status === "pending" || item.status === "running") && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="cursor-pointer text-xs font-medium text-rose-600 hover:text-rose-700 hover:underline"
+            >
+              Abbrechen
+            </button>
+          )}
+          {item.status === "success" && (
+            <>
+              <button
+                type="button"
+                onClick={onDownloadPDF}
+                className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                title="Als PDF herunterladen"
+              >
+                PDF ↓
+              </button>
+              <button
+                type="button"
+                onClick={onDownloadDOCX}
+                className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                title="Als DOCX herunterladen (kompatibel mit allen Office-Suiten)"
+              >
+                DOCX ↓
+              </button>
+              <button
+                type="button"
+                onClick={() => onCopy(item.output)}
+                disabled={copyStatus !== "idle"}
+                className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline disabled:opacity-50"
+              >
+                {copyStatus === "success" ? "✓ Kopiert" : copyStatus === "error" ? "Fehler" : "Kopieren"}
+              </button>
+            </>
+          )}
+          {(item.status === "success" || item.status === "error" || item.status === "cancelled") && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="cursor-pointer text-xs font-medium text-rose-600 hover:text-rose-700 hover:underline"
+            >
+              Löschen
+            </button>
+          )}
+        </div>
+      </div>
+      {isExpanded && (
+        <>
+          {item.output && (
+            <div className="mt-4">
+              {item.status === "running" ? (
+                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-slate-700">
+                  {item.output}
+                  <span className="inline-block h-4 w-1 animate-pulse bg-slate-900" />
+                </div>
+              ) : (
+                <PDFPreview content={item.output} title={`${item.topic.label} - Klasse ${item.grade}`} />
+              )}
+            </div>
+          )}
+          {item.status === "error" && item.error && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p className="font-semibold">Fehler</p>
+              <p>{item.error}</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+})
 
 function saveResultToStorage(result: StoredResult) {
   try {
@@ -347,6 +501,28 @@ function PageContent() {
     [expandedItemId]
   )
 
+  const handleDownloadPDF = useCallback(async (item: GenerationItem) => {
+    if (!item.output) return
+    try {
+      const filename = `${item.topic.label.replace(/[^a-z0-9]/gi, "_")}_Klasse${item.grade}.pdf`
+      await exportToPDF(item.output, `${item.topic.label} - Klasse ${item.grade}`, filename)
+    } catch (error) {
+      console.error("PDF download failed:", error)
+      alert("PDF-Download fehlgeschlagen")
+    }
+  }, [])
+
+  const handleDownloadDOCX = useCallback(async (item: GenerationItem) => {
+    if (!item.output) return
+    try {
+      const filename = `${item.topic.label.replace(/[^a-z0-9]/gi, "_")}_Klasse${item.grade}.docx`
+      await exportToDOCX(item.output, `${item.topic.label} - Klasse ${item.grade}`, filename)
+    } catch (error) {
+      console.error("DOCX download failed:", error)
+      alert("DOCX-Download fehlgeschlagen")
+    }
+  }, [])
+
   const toggleExpanded = useCallback((itemId: string) => {
     setExpandedItemId(prev => (prev === itemId ? null : itemId))
   }, [])
@@ -443,120 +619,24 @@ function PageContent() {
           {queue
             .slice()
             .reverse()
-            .map(item => {
-              const isExpanded = expandedItemId === item.id
-              const hasContent = item.output || (item.status === "error" && item.error)
-              return (
-                <div key={item.id} className="rounded-2xl border border-slate-200 bg-white px-6 py-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => hasContent && toggleExpanded(item.id)}
-                      className={cx("flex flex-1 flex-col gap-1 text-left", hasContent ? "cursor-pointer" : "")}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {item.status === "pending" && "Wartend"}
-                          {item.status === "running" && "Live-Vorschau"}
-                          {item.status === "success" && "Ergebnis"}
-                          {item.status === "error" && "Fehler"}
-                          {item.status === "cancelled" && "Abgebrochen"}
-                        </span>
-                        {hasContent && (
-                          <>
-                            <svg
-                              className={cx(
-                                "h-4 w-4 text-slate-400 transition-transform",
-                                isExpanded ? "rotate-180" : "rotate-0"
-                              )}
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </>
-                        )}
-                      </div>
-                      <span className="font-semibold text-slate-800">
-                        {item.topic.label} · Klasse {item.grade}
-                      </span>
-                      {item.specificPrompt && (
-                        <span className="text-xs italic text-slate-500 line-clamp-2">
-                          Impuls: {item.specificPrompt}
-                        </span>
-                      )}
-                      {item.modelId && (
-                        <span className="text-xs text-slate-500">
-                          Modell:{" "}
-                          <span
-                            onClick={e => {
-                              e.stopPropagation()
-                              setSelectedModelId(item.modelId!)
-                              // Scroll to model loader
-                              document.querySelector("[data-model-loader]")?.scrollIntoView({ behavior: "smooth" })
-                            }}
-                            className="cursor-pointer hover:text-slate-700 hover:underline"
-                          >
-                            {MODEL_LABELS[item.modelId] ?? item.modelId}
-                          </span>
-                        </span>
-                      )}
-                    </button>
-                    <div className="flex items-center gap-3">
-                      {(item.status === "pending" || item.status === "running") && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancel(item.id)}
-                          className="cursor-pointer text-xs font-medium text-rose-600 hover:text-rose-700 hover:underline"
-                        >
-                          Abbrechen
-                        </button>
-                      )}
-                      {item.status === "success" && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(item.output)}
-                            disabled={copyStatus !== "idle"}
-                            className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline disabled:opacity-50"
-                          >
-                            {copyStatus === "success" ? "✓ Kopiert" : copyStatus === "error" ? "Fehler" : "Kopieren"}
-                          </button>
-                        </>
-                      )}
-                      {(item.status === "success" || item.status === "error" || item.status === "cancelled") && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="cursor-pointer text-xs font-medium text-rose-600 hover:text-rose-700 hover:underline"
-                        >
-                          Löschen
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {isExpanded && (
-                    <>
-                      {item.output && (
-                        <div className="prose prose-sm max-w-none whitespace-pre-wrap text-slate-700">
-                          {item.output}
-                          {item.status === "running" && (
-                            <span className="inline-block h-4 w-1 animate-pulse bg-slate-900" />
-                          )}
-                        </div>
-                      )}
-                      {item.status === "error" && item.error && (
-                        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                          <p className="font-semibold">Fehler</p>
-                          <p>{item.error}</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )
-            })}
+            .map(item => (
+              <QueueItem
+                key={item.id}
+                item={item}
+                isExpanded={expandedItemId === item.id}
+                copyStatus={copyStatus}
+                onToggleExpanded={() => toggleExpanded(item.id)}
+                onCancel={() => handleCancel(item.id)}
+                onCopy={handleCopy}
+                onDelete={() => handleDelete(item.id)}
+                onDownloadPDF={() => handleDownloadPDF(item)}
+                onDownloadDOCX={() => handleDownloadDOCX(item)}
+                onModelClick={modelId => {
+                  setSelectedModelId(modelId)
+                  document.querySelector("[data-model-loader]")?.scrollIntoView({ behavior: "smooth" })
+                }}
+              />
+            ))}
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2">
@@ -738,16 +818,6 @@ function PageContent() {
                             </ul>
                           </div>
                         )}
-                        <div className="mt-auto flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => handleGenerate(topic)}
-                            disabled={isEngineBusy || !webgpu.supported}
-                            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-300 disabled:text-slate-600"
-                          >
-                            {isTopicLoading ? "Generiere …" : "Entwurf erstellen"}
-                          </button>
-                        </div>
                       </article>
                     )
                   })}
