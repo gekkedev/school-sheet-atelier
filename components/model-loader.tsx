@@ -29,7 +29,13 @@ function formatStatus(status: string) {
   }
 }
 
-export function ModelLoader() {
+export function ModelLoader({
+  externalSelectedModelId,
+  onModelIdChange
+}: {
+  externalSelectedModelId?: string
+  onModelIdChange?: (id: string) => void
+}) {
   const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID)
   const { status, progress, error, webgpu, initialize, activeModelId, cachedModels, isModelCached, isGenerating } =
     useWebLLMContext()
@@ -92,7 +98,7 @@ export function ModelLoader() {
   const isSelectedCached = isModelCached(selectedModelId)
   const statusLabel = formatStatus(status)
   const activeLabel = activeModelId ? (MODEL_LABELS[activeModelId] ?? activeModelId) : null
-  const fallbackActivated = Boolean(activeModelId && activeModelId !== selectedModelId)
+  const modelDiffersFromLoaded = Boolean(activeModelId && activeModelId !== selectedModelId)
 
   useEffect(() => {
     setAutoStartedFor(null)
@@ -127,6 +133,15 @@ export function ModelLoader() {
   }, [])
 
   useEffect(() => {
+    if (externalSelectedModelId && externalSelectedModelId !== selectedModelId) {
+      setSelectedModelId(externalSelectedModelId)
+      if (onModelIdChange) {
+        onModelIdChange("")
+      }
+    }
+  }, [externalSelectedModelId, selectedModelId, onModelIdChange])
+
+  useEffect(() => {
     if (hydrated && selectedModelId) {
       window.localStorage.setItem(MODEL_SELECTION_KEY, selectedModelId)
     }
@@ -147,7 +162,7 @@ export function ModelLoader() {
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
+    <section data-model-loader className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-1">
@@ -195,7 +210,7 @@ export function ModelLoader() {
           {isSelectedCached ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {selectedLabel} im Cache
+              {selectedLabel}
             </span>
           ) : (
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -261,12 +276,12 @@ export function ModelLoader() {
               </div>
             )}
 
-            {fallbackActivated && activeModelId && (
+            {modelDiffersFromLoaded && activeModelId && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-                <p className="font-semibold">Automatischer Fallback aktiviert</p>
+                <p className="font-semibold">Anderes Modell geladen</p>
                 <p>
-                  {MODEL_LABELS[activeModelId] ?? activeModelId} wurde geladen, weil {selectedLabel} nicht initialisiert
-                  werden konnte.
+                  {MODEL_LABELS[activeModelId] ?? activeModelId} wurde geladen, aber um {selectedLabel} zu
+                  initialisieren , klicke auf „Modell wechseln“.
                 </p>
               </div>
             )}

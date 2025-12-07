@@ -31,6 +31,7 @@ type GenerateOptions = {
   messages: GenerationMessage[]
   temperature?: number
   maxTokens?: number
+  onChunk?: (chunk: string) => void
 }
 
 type GenerateResult = {
@@ -307,7 +308,7 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
   )
 
   const generate = useCallback(
-    async ({ messages, temperature, maxTokens }: GenerateOptions): Promise<GenerateResult> => {
+    async ({ messages, temperature, maxTokens, onChunk }: GenerateOptions): Promise<GenerateResult> => {
       const modelId = activeModelIdRef.current ?? lastRequestedModelIdRef.current ?? defaultModelId
       const engine = await initialize(modelId)
       setIsGenerating(true)
@@ -319,15 +320,42 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
           })),
           temperature: temperature ?? DEFAULT_TEMPERATURE,
           max_tokens: maxTokens ?? DEFAULT_MAX_TOKENS,
-          stream: false
+          stream: !!onChunk
         }
-        const result = await engine.chat.completions.create(
-          request as Parameters<typeof engine.chat.completions.create>[0]
-        )
 
-        return {
-          text: extractText(result),
-          raw: result
+        if (onChunk) {
+          // Stream mode
+          const asyncChunkGenerator = await engine.chat.completions.create(
+            request as Parameters<typeof engine.chat.completions.create>[0]
+          ) as AsyncIterable<any>
+
+          let fullText = ""
+          let chunkCount = 0
+          for await (const chunk of asyncChunkGenerator) {
+            const content = chunk.choices?.[0]?.delta?.content
+            if (content) {
+              fullText += content
+              onChunk(content)
+              chunkCount++
+            }
+          }
+
+          console.log(`Stream completed: ${chunkCount} chunks received, ${fullText.length} characters total`)
+
+          return {
+            text: fullText,
+            raw: null
+          }
+        } else {
+          // Non-stream mode
+          const result = await engine.chat.completions.create(
+            request as Parameters<typeof engine.chat.completions.create>[0]
+          )
+
+          return {
+            text: extractText(result),
+            raw: result
+          }
         }
       } finally {
         setIsGenerating(false)
@@ -335,6 +363,13 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
     },
     [defaultModelId, initialize]
   )
+
+  const cancel = useCallback(async () => {
+    if (engineRef.current) {
+      await engineRef.current.interruptGenerate()
+      setIsGenerating(false)
+    }
+  }, [])
 
   const isModelCached = useCallback((modelId: string) => cachedModels.includes(modelId), [cachedModels])
 
@@ -353,6 +388,7 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
     engine: engineRef.current,
     initialize,
     generate,
+    cancel,
     getCurrentModelId
   }
 }
