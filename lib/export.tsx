@@ -2,78 +2,152 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import { pdf } from "@react-pdf/renderer"
 import { saveAs } from "file-saver"
 import { PDFDocumentContent } from "@/components/pdf-preview"
+import MarkdownIt from "markdown-it"
 
-type MarkdownElement =
-  | { type: "title"; content: string }
-  | { type: "h2"; content: string }
-  | { type: "h3"; content: string }
-  | { type: "paragraph"; content: string }
-  | { type: "listItem"; content: string }
+const md = new MarkdownIt()
 
-function parseMarkdown(markdown: string): MarkdownElement[] {
-  const lines = markdown.split("\n")
-  const elements: MarkdownElement[] = []
+type TextSegment = {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  code?: boolean
+}
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) continue
+type ContentElement =
+  | { type: "h1"; segments: TextSegment[] }
+  | { type: "h2"; segments: TextSegment[] }
+  | { type: "h3"; segments: TextSegment[] }
+  | { type: "paragraph"; segments: TextSegment[] }
+  | { type: "listItem"; segments: TextSegment[] }
 
-    // Title (first # heading)
-    if (line.startsWith("# ")) {
-      elements.push({ type: "title", content: line.substring(2).trim() })
+function parseInlineTokens(tokens: any[]): TextSegment[] {
+  const segments: TextSegment[] = []
+  let bold = false
+  let italic = false
+  let code = false
+
+  for (const token of tokens) {
+    if (token.type === "strong_open") {
+      bold = true
+    } else if (token.type === "strong_close") {
+      bold = false
+    } else if (token.type === "em_open") {
+      italic = true
+    } else if (token.type === "em_close") {
+      italic = false
+    } else if (token.type === "code_inline") {
+      segments.push({ text: token.content, code: true })
+    } else if (token.type === "text") {
+      segments.push({ text: token.content, bold, italic })
+    } else if (token.children) {
+      segments.push(...parseInlineTokens(token.children))
     }
-    // H2
-    else if (line.startsWith("## ")) {
-      elements.push({ type: "h2", content: line.substring(3).trim() })
-    }
-    // H3
-    else if (line.startsWith("### ")) {
-      elements.push({ type: "h3", content: line.substring(4).trim() })
-    }
-    // List item
-    else if (line.startsWith("- ") || line.startsWith("* ") || /^\d+\./.test(line)) {
-      const content = line.replace(/^[-*]\s+/, "").replace(/^\d+\.\s+/, "")
-      elements.push({ type: "listItem", content })
-    }
-    // Regular paragraph
-    else {
-      elements.push({ type: "paragraph", content: line })
+  }
+
+  return segments
+}
+
+function parseMarkdownToElements(markdown: string): ContentElement[] {
+  const tokens = md.parse(markdown, {})
+  const elements: ContentElement[] = []
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+
+    if (token.type === "heading_open") {
+      const level = token.tag
+      const inlineToken = tokens[i + 1]
+      if (inlineToken && inlineToken.children) {
+        const segments = parseInlineTokens(inlineToken.children)
+        if (level === "h1") {
+          elements.push({ type: "h1", segments })
+        } else if (level === "h2") {
+          elements.push({ type: "h2", segments })
+        } else if (level === "h3") {
+          elements.push({ type: "h3", segments })
+        }
+      }
+      i += 2 // Skip inline and closing tokens
+    } else if (token.type === "paragraph_open") {
+      const inlineToken = tokens[i + 1]
+      if (inlineToken && inlineToken.children) {
+        const segments = parseInlineTokens(inlineToken.children)
+        elements.push({ type: "paragraph", segments })
+      }
+      i += 2
+    } else if (token.type === "bullet_list_open" || token.type === "ordered_list_open") {
+      // Process list items
+      i++
+      while (i < tokens.length && tokens[i].type !== "bullet_list_close" && tokens[i].type !== "ordered_list_close") {
+        if (tokens[i].type === "list_item_open") {
+          // Find the paragraph inside the list item
+          i++
+          while (i < tokens.length && tokens[i].type !== "list_item_close") {
+            if (tokens[i].type === "paragraph_open") {
+              const inlineToken = tokens[i + 1]
+              if (inlineToken && inlineToken.children) {
+                const segments = parseInlineTokens(inlineToken.children)
+                elements.push({ type: "listItem", segments })
+              }
+              i += 2
+            } else if (tokens[i].type === "inline" && tokens[i].children) {
+              const segments = parseInlineTokens(tokens[i].children!)
+              elements.push({ type: "listItem", segments })
+              i++
+            } else {
+              i++
+            }
+          }
+        }
+        i++
+      }
     }
   }
 
   return elements
 }
 
-function createDocxParagraphs(elements: MarkdownElement[]): Paragraph[] {
+function createTextRuns(segments: TextSegment[]): TextRun[] {
+  return segments.map(
+    segment =>
+      new TextRun({
+        text: segment.text,
+        bold: segment.bold,
+        italics: segment.italic
+      })
+  )
+}
+
+function createDocxParagraphs(elements: ContentElement[]): Paragraph[] {
   return elements.map(element => {
     switch (element.type) {
-      case "title":
+      case "h1":
         return new Paragraph({
-          text: element.content,
+          children: createTextRuns(element.segments),
           heading: HeadingLevel.HEADING_1,
           spacing: { after: 200 }
         })
       case "h2":
         return new Paragraph({
-          text: element.content,
+          children: createTextRuns(element.segments),
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 200, after: 100 }
         })
       case "h3":
         return new Paragraph({
-          text: element.content,
+          children: createTextRuns(element.segments),
           heading: HeadingLevel.HEADING_3,
           spacing: { before: 100, after: 80 }
         })
       case "listItem":
         return new Paragraph({
-          text: element.content,
+          children: createTextRuns(element.segments),
           bullet: { level: 0 },
           spacing: { after: 80 }
         })
       case "paragraph":
         return new Paragraph({
-          text: element.content,
+          children: createTextRuns(element.segments),
           spacing: { after: 120 }
         })
     }
@@ -92,7 +166,7 @@ export async function exportToPDF(content: string, title: string, filename: stri
 
 export async function exportToDOCX(content: string, title: string, filename: string) {
   try {
-    const elements = parseMarkdown(content)
+    const elements = parseMarkdownToElements(content)
     const paragraphs = createDocxParagraphs(elements)
 
     const doc = new Document({

@@ -1,8 +1,10 @@
 "use client"
 
 import { Document, Page, Text, View, StyleSheet, PDFViewer } from "@react-pdf/renderer"
-import ReactMarkdown from "react-markdown"
 import { useState, useEffect, memo } from "react"
+import MarkdownIt from "markdown-it"
+
+const md = new MarkdownIt()
 
 const styles = StyleSheet.create({
   page: {
@@ -14,19 +16,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     marginBottom: 12,
-    fontWeight: "bold"
+    fontFamily: "Helvetica-Bold"
   },
   heading2: {
     fontSize: 14,
     marginTop: 12,
     marginBottom: 8,
-    fontWeight: "bold"
+    fontFamily: "Helvetica-Bold"
   },
   heading3: {
     fontSize: 12,
     marginTop: 10,
     marginBottom: 6,
-    fontWeight: "bold"
+    fontFamily: "Helvetica-Bold"
   },
   paragraph: {
     marginBottom: 8,
@@ -36,13 +38,20 @@ const styles = StyleSheet.create({
   listItem: {
     marginLeft: 20,
     marginBottom: 4,
-    lineHeight: 1.4
+    lineHeight: 1.4,
+    flexDirection: "row"
+  },
+  listBullet: {
+    width: 15
   },
   bold: {
-    fontWeight: "bold"
+    fontFamily: "Helvetica-Bold"
   },
   italic: {
-    fontStyle: "italic"
+    fontFamily: "Helvetica-Oblique"
+  },
+  boldItalic: {
+    fontFamily: "Helvetica-BoldOblique"
   },
   viewer: {
     width: "100%",
@@ -51,45 +60,124 @@ const styles = StyleSheet.create({
   }
 })
 
-type MarkdownElement =
-  | { type: "title"; content: string }
-  | { type: "h2"; content: string }
-  | { type: "h3"; content: string }
-  | { type: "paragraph"; content: string }
-  | { type: "listItem"; content: string }
+type TextSegment = {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  code?: boolean
+}
 
-function parseMarkdown(markdown: string): MarkdownElement[] {
-  const lines = markdown.split("\n")
-  const elements: MarkdownElement[] = []
+type ContentElement =
+  | { type: "h1"; segments: TextSegment[] }
+  | { type: "h2"; segments: TextSegment[] }
+  | { type: "h3"; segments: TextSegment[] }
+  | { type: "paragraph"; segments: TextSegment[] }
+  | { type: "listItem"; segments: TextSegment[] }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) continue
+function parseInlineTokens(tokens: any[]): TextSegment[] {
+  const segments: TextSegment[] = []
+  let bold = false
+  let italic = false
+  let code = false
 
-    // Title (first # heading)
-    if (line.startsWith("# ")) {
-      elements.push({ type: "title", content: line.substring(2).trim() })
+  for (const token of tokens) {
+    if (token.type === "strong_open") {
+      bold = true
+    } else if (token.type === "strong_close") {
+      bold = false
+    } else if (token.type === "em_open") {
+      italic = true
+    } else if (token.type === "em_close") {
+      italic = false
+    } else if (token.type === "code_inline") {
+      segments.push({ text: token.content, code: true })
+    } else if (token.type === "text") {
+      segments.push({ text: token.content, bold, italic })
+    } else if (token.children) {
+      segments.push(...parseInlineTokens(token.children))
     }
-    // H2
-    else if (line.startsWith("## ")) {
-      elements.push({ type: "h2", content: line.substring(3).trim() })
-    }
-    // H3
-    else if (line.startsWith("### ")) {
-      elements.push({ type: "h3", content: line.substring(4).trim() })
-    }
-    // List item
-    else if (line.startsWith("- ") || line.startsWith("* ") || /^\d+\./.test(line)) {
-      const content = line.replace(/^[-*]\s+/, "").replace(/^\d+\.\s+/, "")
-      elements.push({ type: "listItem", content })
-    }
-    // Regular paragraph
-    else {
-      elements.push({ type: "paragraph", content: line })
+  }
+
+  return segments
+}
+
+function parseMarkdownToElements(markdown: string): ContentElement[] {
+  const tokens = md.parse(markdown, {})
+  const elements: ContentElement[] = []
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+
+    if (token.type === "heading_open") {
+      const level = token.tag
+      const inlineToken = tokens[i + 1]
+      if (inlineToken && inlineToken.children) {
+        const segments = parseInlineTokens(inlineToken.children)
+        if (level === "h1") {
+          elements.push({ type: "h1", segments })
+        } else if (level === "h2") {
+          elements.push({ type: "h2", segments })
+        } else if (level === "h3") {
+          elements.push({ type: "h3", segments })
+        }
+      }
+      i += 2 // Skip inline and closing tokens
+    } else if (token.type === "paragraph_open") {
+      const inlineToken = tokens[i + 1]
+      if (inlineToken && inlineToken.children) {
+        const segments = parseInlineTokens(inlineToken.children)
+        elements.push({ type: "paragraph", segments })
+      }
+      i += 2
+    } else if (token.type === "bullet_list_open" || token.type === "ordered_list_open") {
+      // Process list items
+      i++
+      while (i < tokens.length && tokens[i].type !== "bullet_list_close" && tokens[i].type !== "ordered_list_close") {
+        if (tokens[i].type === "list_item_open") {
+          // Find the paragraph inside the list item
+          i++
+          while (i < tokens.length && tokens[i].type !== "list_item_close") {
+            if (tokens[i].type === "paragraph_open") {
+              const inlineToken = tokens[i + 1]
+              if (inlineToken && inlineToken.children) {
+                const segments = parseInlineTokens(inlineToken.children)
+                elements.push({ type: "listItem", segments })
+              }
+              i += 2
+            } else if (tokens[i].type === "inline" && tokens[i].children) {
+              const segments = parseInlineTokens(tokens[i].children!)
+              elements.push({ type: "listItem", segments })
+              i++
+            } else {
+              i++
+            }
+          }
+        }
+        i++
+      }
     }
   }
 
   return elements
+}
+
+function renderTextSegments(segments: TextSegment[]) {
+  return segments.map((segment, idx) => {
+    let style = {}
+    if (segment.bold && segment.italic) {
+      style = styles.boldItalic
+    } else if (segment.bold) {
+      style = styles.bold
+    } else if (segment.italic) {
+      style = styles.italic
+    }
+
+    return (
+      <Text key={idx} style={style}>
+        {segment.text}
+      </Text>
+    )
+  })
 }
 
 interface PDFDocumentProps {
@@ -98,45 +186,44 @@ interface PDFDocumentProps {
 }
 
 export function PDFDocumentContent({ content, title }: PDFDocumentProps) {
-  const elements = parseMarkdown(content)
+  const elements = parseMarkdownToElements(content)
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {elements.map((element, index) => {
           switch (element.type) {
-            case "title":
+            case "h1":
               return (
                 <Text key={index} style={styles.title}>
-                  {element.content}
+                  {renderTextSegments(element.segments)}
                 </Text>
               )
             case "h2":
               return (
                 <Text key={index} style={styles.heading2}>
-                  {element.content}
+                  {renderTextSegments(element.segments)}
                 </Text>
               )
             case "h3":
               return (
                 <Text key={index} style={styles.heading3}>
-                  {element.content}
+                  {renderTextSegments(element.segments)}
                 </Text>
               )
             case "listItem":
               return (
-                <Text key={index} style={styles.listItem}>
-                  • {element.content}
-                </Text>
+                <View key={index} style={styles.listItem}>
+                  <Text style={styles.listBullet}>•</Text>
+                  <Text style={{ flex: 1 }}>{renderTextSegments(element.segments)}</Text>
+                </View>
               )
             case "paragraph":
               return (
                 <Text key={index} style={styles.paragraph}>
-                  {element.content}
+                  {renderTextSegments(element.segments)}
                 </Text>
               )
-            default:
-              return null
           }
         })}
       </Page>
