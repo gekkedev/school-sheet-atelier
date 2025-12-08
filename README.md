@@ -2,7 +2,7 @@
 
 SchoolSheet-Atelier generates elementary school German and Religion exams, worksheets, and printable handouts entirely in the browser using WebGPU plus WebLLM. No server, no API keys. Runs locally on a regular laptop.
 
-> Built with Next.js 15 (App Router, React) and exported as a static site for GitHub Pages.  
+> Built with Next.js 16 (App Router, React 19) and configured for static site export for GitHub Pages.  
 > Deploys automatically on every push to `main`.
 
 ---
@@ -10,13 +10,14 @@ SchoolSheet-Atelier generates elementary school German and Religion exams, works
 ## Features
 
 - On-device LLM (WebLLM plus WebGPU). First model download shows a progress bar, then cached offline.
-- Exam and worksheet generator with grade, subject, topic selection, difficulty, and temperature (default 0.3-0.5).
-- Self-check pass: model re-reads and fixes grammar or solutions before final output.
-- Editable preview with full WYSIWYG editor for last-minute changes before exporting.
-- PDF preview and export (DIN A4, page numbers, header and footer).
-- DOCX export (opens in Word, LibreOffice, OpenOffice).
-- Templates for exams, worksheets, reading passages, cloze texts, flashcards, quizzes, answer sheets.
-- Curated topic libraries for Deutsch and Religion, with ability to add custom topics.
+- Worksheet and exam generator with grade, subject, and topic selection.
+- Live streaming preview shows content as it's generated.
+- Multiple generation queue with status tracking and cancellation.
+- PDF preview and export using @react-pdf/renderer (DIN A4 layout).
+- DOCX export with docx library (compatible with Word, LibreOffice, OpenOffice).
+- Copy to clipboard functionality for generated content.
+- Curated topic libraries for Deutsch and Religion with detailed focus areas and sample prompts.
+- Persistent storage of generated results in browser localStorage.
 
 ---
 
@@ -41,12 +42,10 @@ pnpm dev       # runs on http://localhost:3000
 ## Model Choices (MLC/WebLLM IDs)
 
 - Default: `Llama-3.2-3B-Instruct-q4f32_1-MLC` (balanced quality, ≈1.4 GB download).
-- Fallback: `Llama-3.2-1B-Instruct-q4f16_1-MLC` (fallback for mid-range GPUs, ≈0.7 GB download).
-- Optional low-resource: `TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC` (fits very constrained GPUs, ≈0.55 GB).
+- Fallback: `Llama-3.2-1B-Instruct-q4f16_1-MLC` (lighter option for mid-range GPUs, ≈0.7 GB download).
+- Alternative: `Llama-2-7b-chat-hf-q4f32_1-MLC-1k` (larger model for better quality, ≈4.0 GB download).
 
-You can change the default in `lib/model.ts` or via `NEXT_PUBLIC_MODEL_ID`.
-
-> Hinweis: Die IDs werden über eine eigene WebLLM-App-Konfiguration eingebunden, damit die Llama-3.2-Modelle auch dann geladen werden, wenn sie (noch) nicht im vorgefertigten Paket enthalten sind.
+You can select models in the UI or change the default in `lib/model.ts`. The app uses the prebuilt WebLLM model list and caches downloaded models in IndexedDB.
 
 ---
 
@@ -64,26 +63,27 @@ You can generate any printable handout, not just exams:
 
 Pick a template, then refine grade, subject, and topics.
 
+## Generation Workflow
+
+1. Select a subject (Deutsch or Religion)
+2. Choose grade level (1-4 or all grades)
+3. Pick a topic from the curated library or enter a custom prompt
+4. Click generate to add to queue
+5. Watch live streaming preview as content is generated
+6. Download as PDF or DOCX, or copy to clipboard
+
+Generated content includes worksheets, exercises, and educational materials tailored to elementary school curriculum.
+
 ---
 
-## Editable Preview
+## Preview and Export
 
-- Full-page WYSIWYG editor (TipTap or Slate).
-- Toolbar: headings, bold or italic, lists, page break, images.
-- What you edit updates the underlying JSON schema.
-- Reset button restores the last generated output.
-
----
-
-## Export Options
-
-- PDF:
-  - True print preview (A4 layout with margins, page numbers).
-  - In-browser preview using `react-pdf` or DOM-to-PDF (`html2canvas` plus `jsPDF`).
-  - Download final PDF.
-- DOCX:
-  - Generated from the JSON schema with the `docx` library.
-  - Opens in Microsoft Word, LibreOffice, and OpenOffice without layout issues.
+- Live streaming preview shows content as it's being generated with a blinking cursor.
+- Once complete, view formatted PDF preview with proper A4 layout.
+- Export options:
+  - **PDF:** Renders using @react-pdf/renderer with proper page layout, headers, and footers.
+  - **DOCX:** Converts markdown to structured Word document using the docx library.
+  - **Clipboard:** Copy markdown content directly to clipboard.
 
 ---
 
@@ -109,15 +109,41 @@ Curated lists for quick selection; extendable with custom topics.
 
 ---
 
+## Technical Stack
+
+**Core:**
+
+- Next.js 16.0.7 with App Router
+- React 19.2.1
+- TypeScript 5.9.3
+- Tailwind CSS 4.1.17
+
+**AI/ML:**
+
+- @mlc-ai/web-llm 0.2.80 for on-device inference
+
+**Export:**
+
+- @react-pdf/renderer 4.3.1 for PDF generation
+- docx 9.5.1 for Word document export
+- file-saver 2.0.5 for downloads
+
+**Markdown:**
+
+- markdown-it 14.1.0 for parsing
+- react-markdown 10.1.0 for rendering
+
+---
+
 ## Privacy
 
-All generation happens locally in the browser. The model is downloaded once (about 1.4 GB for 3B int4), cached in Cache Storage, and reused offline.
+All generation happens locally in the browser. The model is downloaded once (about 1.4 GB for 3B int4), cached in IndexedDB, and reused offline.
 
 ---
 
 ## Credits
 
 - WebLLM (MLC) - in-browser LLM engine
-- Meta Llama 3.2 (3B and 1B variants)
+- Meta Llama 3.2 (3B and 1B variants) and Llama 2 (7B)
 - Next.js for static site generation
-- docx, react-pdf, jspdf for export
+- @react-pdf/renderer and docx for export
