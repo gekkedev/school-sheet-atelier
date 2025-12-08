@@ -385,29 +385,35 @@ function PageContent() {
       await initialize()
 
       const systemPrompt =
-        "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen. Jede Ausgabe enthält strukturierte Aufgaben, klare Anweisungen und einen vollständigen Lösungsteil."
+        "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen. Jede Ausgabe enthält strukturierte Aufgaben, klare Anweisungen und einen vollständigen Lösungsteil.\n\nWICHTIG: Du antwortest IMMER und AUSSCHLIESSLICH auf Deutsch. Alle Materialien, Aufgaben, Lösungen und Erklärungen müssen komplett in deutscher Sprache verfasst sein."
 
       const focusLine = pending.topic.focus.length > 0 ? `Fokusthemen: ${pending.topic.focus.join(", ")}.` : ""
-      const impulses =
-        pending.topic.samplePrompts.length > 0
+      // If a specific prompt was selected, use only that one, otherwise show all available prompts
+      const impulse = pending.specificPrompt
+        ? `Ausgewählter Impuls: ${pending.specificPrompt}`
+        : pending.topic.samplePrompts.length > 0
           ? `Inspiration aus der Themenbibliothek:\n- ${pending.topic.samplePrompts.join("\n- ")}`
           : ""
 
       const subjectTitle = SUBJECTS.find(s => s.id === pending.subjectId)?.title ?? pending.subjectId
       const userPrompt = [
+        "WICHTIG: Antworte ausschließlich auf Deutsch!",
+        "",
         `Fach: ${subjectTitle}`,
         `Klassenstufe: ${pending.grade}`,
         `Thema: ${pending.topic.label}`,
         `Beschreibung: ${pending.topic.description}`,
         focusLine,
-        impulses,
+        impulse,
         "Erstelle ein vollständiges Unterrichtsmaterial in deutscher Sprache mit folgenden Abschnitten:",
-        "1. Titel",
-        "2. Lernziele (2-3 Bulletpoints)",
-        "3. Einleitungstext für die Schüler (2-3 Sätze)",
-        "4. Aufgabenbereich mit mindestens drei Aufgaben (markiere jede Aufgabe mit leicht/mittel/schwer und nenne benötigtes Material)",
-        "5. Differenzierungsidee (für Förder- und Forderkinder)",
-        "6. Lösungsteil mit eindeutigen Antworten"
+        "1. Titel (auf Deutsch)",
+        "2. Lernziele (2-3 Stichpunkte auf Deutsch)",
+        "3. Einleitungstext für die Schüler (2-3 Sätze auf Deutsch)",
+        "4. Aufgabenbereich mit mindestens drei Aufgaben (markiere jede Aufgabe mit leicht/mittel/schwer und nenne benötigtes Material - alles auf Deutsch)",
+        "5. Differenzierungsidee (für Förder- und Forderkinder - auf Deutsch)",
+        "6. Lösungsteil mit eindeutigen Antworten (auf Deutsch)",
+        "",
+        "Denke daran: Die gesamte Antwort muss auf Deutsch sein!"
       ]
         .filter(Boolean)
         .join("\n\n")
