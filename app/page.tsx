@@ -7,6 +7,7 @@ import { WebLLMProvider, useWebLLMContext } from "@/context/web-llm-context"
 import { MODEL_LABELS } from "@/lib/model"
 import { exportToPDF, exportToDOCX } from "@/lib/export"
 import { SUBJECTS, type Grade, type Subject, type SubjectId, type Topic } from "@/data/topics"
+import { DOCUMENT_TYPES, getDocumentType, type DocumentType } from "@/data/document-types"
 
 type GradeFilter = Grade | "Alle"
 
@@ -23,6 +24,7 @@ type GenerationItem = {
   error: string | null
   timestamp: number
   specificPrompt?: string
+  documentType?: string
 }
 
 type StoredResult = {
@@ -33,6 +35,7 @@ type StoredResult = {
   modelId: string
   output: string
   subjectId: SubjectId
+  documentType?: string
 }
 
 const STORAGE_KEY = "school-sheet-results"
@@ -99,8 +102,11 @@ const QueueItem = memo(function QueueItem({
             )}
           </div>
           <span className="font-semibold text-slate-800">
-            {item.topic.label} · Klasse {item.grade}
+            {item.documentType && getDocumentType(item.documentType).icon} {item.topic.label} · Klasse {item.grade}
           </span>
+          {item.documentType && (
+            <span className="text-xs text-slate-500">Typ: {getDocumentType(item.documentType).label}</span>
+          )}
           {item.specificPrompt && (
             <span className="text-xs italic text-slate-500 line-clamp-2">Impuls: {item.specificPrompt}</span>
           )}
@@ -275,6 +281,7 @@ function PageContent() {
   const [activeSubjectId, setActiveSubjectId] = useState<SubjectId>("deutsch")
   const [activeGrade, setActiveGrade] = useState<GradeFilter>("Alle")
   const [selectedModelId, setSelectedModelId] = useState<string>("")
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>("worksheet")
   const webllm = useWebLLMContext()
   const {
     status: engineStatus,
@@ -360,14 +367,15 @@ function PageContent() {
         output: "",
         error: null,
         timestamp: Date.now(),
-        specificPrompt
+        specificPrompt,
+        documentType: selectedDocumentType
       }
 
       setQueue(prev => [...prev, newItem])
       // Expand the newly added item
       setExpandedItemId(newItem.id)
     },
-    [activeSubject.id, determineGrade]
+    [activeSubject.id, determineGrade, selectedDocumentType]
   )
 
   const processQueue = useCallback(async () => {
@@ -384,8 +392,13 @@ function PageContent() {
     try {
       await initialize()
 
-      const systemPrompt =
-        "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen. Jede Ausgabe enthält strukturierte Aufgaben, klare Anweisungen und einen vollständigen Lösungsteil.\n\nWICHTIG: Du antwortest IMMER und AUSSCHLIESSLICH auf Deutsch. Alle Materialien, Aufgaben, Lösungen und Erklärungen müssen komplett in deutscher Sprache verfasst sein."
+      const docType = getDocumentType(pending.documentType ?? "worksheet")
+
+      const systemPrompt = [
+        "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen.",
+        docType.systemPromptAddition,
+        "WICHTIG: Du antwortest IMMER und AUSSCHLIESSLICH auf Deutsch. Alle Materialien, Aufgaben, Lösungen und Erklärungen müssen komplett in deutscher Sprache verfasst sein."
+      ].join(" ")
 
       const focusLine = pending.topic.focus.length > 0 ? `Fokusthemen: ${pending.topic.focus.join(", ")}.` : ""
       // If a specific prompt was selected, use only that one, otherwise show all available prompts
@@ -399,19 +412,17 @@ function PageContent() {
       const userPrompt = [
         "WICHTIG: Antworte ausschließlich auf Deutsch!",
         "",
+        `Dokumenttyp: ${docType.label}`,
         `Fach: ${subjectTitle}`,
         `Klassenstufe: ${pending.grade}`,
         `Thema: ${pending.topic.label}`,
         `Beschreibung: ${pending.topic.description}`,
         focusLine,
         impulse,
-        "Erstelle ein vollständiges Unterrichtsmaterial in deutscher Sprache mit folgenden Abschnitten:",
-        "1. Titel (auf Deutsch)",
-        "2. Lernziele (2-3 Stichpunkte auf Deutsch)",
-        "3. Einleitungstext für die Schüler (2-3 Sätze auf Deutsch)",
-        "4. Aufgabenbereich mit mindestens drei Aufgaben (markiere jede Aufgabe mit leicht/mittel/schwer und nenne benötigtes Material - alles auf Deutsch)",
-        "5. Differenzierungsidee (für Förder- und Forderkinder - auf Deutsch)",
-        "6. Lösungsteil mit eindeutigen Antworten (auf Deutsch)",
+        "",
+        `Erstelle ein vollständiges ${docType.label} in deutscher Sprache mit folgender Struktur:`,
+        "",
+        ...docType.taskInstructions,
         "",
         "Denke daran: Die gesamte Antwort muss auf Deutsch sein!"
       ]
@@ -446,7 +457,8 @@ function PageContent() {
           grade: pending.grade,
           modelId: usedModelId,
           output: finalOutput,
-          subjectId: pending.subjectId
+          subjectId: pending.subjectId,
+          documentType: pending.documentType
         })
       }
 
@@ -590,6 +602,40 @@ function PageContent() {
             </p>
           </div>
 
+          <div className="flex flex-col gap-3">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dokumenttyp wählen</label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              {DOCUMENT_TYPES.map(docType => {
+                const isSelected = selectedDocumentType === docType.id
+                return (
+                  <button
+                    key={docType.id}
+                    type="button"
+                    onClick={() => setSelectedDocumentType(docType.id)}
+                    className={cx(
+                      "group flex flex-col gap-1 rounded-xl border p-3 text-left transition",
+                      isSelected
+                        ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+                    )}
+                    title={docType.description}
+                  >
+                    <span className="text-2xl">{docType.icon}</span>
+                    <span
+                      className={cx(
+                        "text-xs font-semibold",
+                        isSelected ? "text-white" : "text-slate-700 group-hover:text-slate-900"
+                      )}
+                    >
+                      {docType.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-slate-500">{getDocumentType(selectedDocumentType).description}</p>
+          </div>
+
           {!webgpu.supported && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               <p className="font-semibold">WebGPU benötigt</p>
@@ -606,8 +652,9 @@ function PageContent() {
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
             {queue.length === 0 && (
               <p>
-                Wähle unten ein Thema und klicke auf <span className="font-semibold">„Entwurf erstellen"</span>, um ein
-                komplettes Arbeitsblatt zu erzeugen. Fokus: strukturierte Aufgaben, klare Instruktionen und Lösungsteil.
+                Wähle einen Dokumenttyp und ein Thema unten, dann klicke auf{" "}
+                <span className="font-semibold">„Entwurf erstellen"</span>. Das Modell erstellt ein vollständiges{" "}
+                {getDocumentType(selectedDocumentType).label} mit Aufgaben und Lösungen.
               </p>
             )}
             {queue.length > 0 && (

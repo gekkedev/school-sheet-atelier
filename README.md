@@ -10,6 +10,7 @@ SchoolSheet-Atelier generates elementary school German and Religion exams, works
 ## Features
 
 - On-device LLM (WebLLM plus WebGPU). First model download shows a progress bar, then cached offline.
+- 10 different document types: worksheets, exams, reading passages, cloze texts, multiple-choice quizzes, flashcards, projects, and more.
 - Worksheet and exam generator with grade, subject, and topic selection.
 - Live streaming preview shows content as it's generated.
 - Multiple generation queue with status tracking and cancellation.
@@ -51,28 +52,32 @@ You can select models in the UI or change the default in `lib/model.ts`. The app
 
 ## Document Types
 
-You can generate any printable handout, not just exams:
+The app supports 10 different document types, each with specialized prompts and structure:
 
-- Exam (tasks plus solutions, time and points)
-- Worksheet or simple tasks
-- Reading passage with questions
-- Cloze text (Lückentext)
-- Flashcards (term versus definition)
-- Quiz (multiple choice or short answer)
-- Answer sheet (blank grid or lines)
+1. **Arbeitsblatt (Worksheet)** - Structured practice tasks with solutions
+2. **Klassenarbeit (Exam)** - Test format with point distribution and grading scale
+3. **Lesetext mit Aufgaben (Reading Passage)** - Age-appropriate text with comprehension questions
+4. **Lückentext (Cloze Test)** - Text with strategically placed blanks to fill in
+5. **Multiple-Choice-Quiz** - Questions with 4 answer choices
+6. **Kurzantwort-Quiz (Short Answer Quiz)** - Open-ended questions with brief answers
+7. **Lernkarten (Flashcards)** - Front/back card format for memorization
+8. **Antwortbogen (Answer Sheet)** - Blank form template for student responses
+9. **Projektauftrag (Project Assignment)** - Multi-week project with phase plan
+10. **Stationenlernen (Station Learning)** - 5-7 learning stations for independent work
 
-Pick a template, then refine grade, subject, and topics.
+Each document type has tailored instructions to ensure appropriate formatting, structure, and pedagogical approach.
 
 ## Generation Workflow
 
 1. Select a subject (Deutsch or Religion)
-2. Choose grade level (1-4 or all grades)
-3. Pick a topic from the curated library or enter a custom prompt
-4. Click generate to add to queue
-5. Watch live streaming preview as content is generated
-6. Download as PDF or DOCX, or copy to clipboard
+2. Choose a document type (worksheet, exam, quiz, flashcards, etc.)
+3. Choose grade level (1-4 or all grades)
+4. Pick a topic from the curated library or enter a custom prompt
+5. Click generate to add to queue
+6. Watch live streaming preview as content is generated
+7. Download as PDF or DOCX, or copy to clipboard
 
-Generated content includes worksheets, exercises, and educational materials tailored to elementary school curriculum.
+Each document type uses specialized prompts to generate appropriate content structure, difficulty level, and pedagogical elements.
 
 ---
 
