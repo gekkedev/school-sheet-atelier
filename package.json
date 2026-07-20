@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "test": "node scripts/check-generated-document.mjs",
     "format": "prettier --write .",
     "postinstall": "pnpm format",
     "update-interactive": "pnpm update --interactive --latest && pnpm run postinstall"

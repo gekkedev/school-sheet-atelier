@@ -6,6 +6,11 @@ import { PDFPreview } from "@/components/pdf-preview"
 import { WebLLMProvider, useWebLLMContext } from "@/context/web-llm-context"
 import { MODEL_LABELS } from "@/lib/model"
 import { exportToPDF, exportToDOCX } from "@/lib/export"
+import {
+  GENERATED_DOCUMENT_SCHEMA,
+  generatedDocumentToMarkdown,
+  parseGeneratedDocument
+} from "@/lib/generated-document"
 import { SUBJECTS, type Grade, type Subject, type SubjectId, type Topic } from "@/data/topics"
 import { DOCUMENT_TYPES, getDocumentType, type DocumentType } from "@/data/document-types"
 
@@ -397,7 +402,8 @@ function PageContent() {
       const systemPrompt = [
         "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen.",
         docType.systemPromptAddition,
-        "WICHTIG: Du antwortest IMMER und AUSSCHLIESSLICH auf Deutsch. Alle Materialien, Aufgaben, Lösungen und Erklärungen müssen komplett in deutscher Sprache verfasst sein."
+        "WICHTIG: Du antwortest IMMER und AUSSCHLIESSLICH auf Deutsch. Alle Materialien, Aufgaben, Lösungen und Erklärungen müssen komplett in deutscher Sprache verfasst sein.",
+        "Gib ausschließlich ein gültiges JSON-Objekt zurück, ohne Markdown-Codeblock oder Begleittext. Prüfe vor der Ausgabe Grammatik, Lösungen, Punkte und die Zuordnung der Lösungen zu den Aufgaben."
       ].join(" ")
 
       const focusLine = pending.topic.focus.length > 0 ? `Fokusthemen: ${pending.topic.focus.join(", ")}.` : ""
@@ -424,6 +430,10 @@ function PageContent() {
         "",
         ...docType.taskInstructions,
         "",
+        `Verwende exakt dieses JSON-Schema:\n${GENERATED_DOCUMENT_SCHEMA}`,
+        `Setze docType auf "${docType.id}", grade auf ${Number(pending.grade)} und subject auf "${subjectTitle}".`,
+        "Jede Aufgabe erhält eine eindeutige id; solutions verwendet genau diese ids als Schlüssel.",
+        "",
         "Denke daran: Die gesamte Antwort muss auf Deutsch sein!"
       ]
         .filter(Boolean)
@@ -444,9 +454,35 @@ function PageContent() {
         }
       })
 
-      const currentItem = queue.find(item => item.id === pending.id)
-      const output = currentItem?.output || response.text.trim()
-      const finalOutput = output.length > 0 ? output : "⚠️ Das Modell hat keine Ausgabe geliefert."
+      const output = response.text.trim()
+      const expectedDocument = { docType: docType.id, grade: Number(pending.grade), subject: subjectTitle }
+      let parsed = parseGeneratedDocument(output, expectedDocument)
+
+      if (!parsed.document) {
+        const repair = await generate({
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: [
+                "Repariere die folgende ungültige Ausgabe.",
+                `Validierungsfehler:\n- ${parsed.errors.join("\n- ")}`,
+                `Verwende exakt dieses JSON-Schema:\n${GENERATED_DOCUMENT_SCHEMA}`,
+                "Gib ausschließlich das korrigierte JSON-Objekt zurück.",
+                `Ungültige Ausgabe:\n${output}`
+              ].join("\n\n")
+            }
+          ],
+          temperature: 0
+        })
+        parsed = parseGeneratedDocument(repair.text.trim(), expectedDocument)
+      }
+
+      if (!parsed.document) {
+        throw new Error(`Die strukturierte Ausgabe ist auch nach der Reparatur ungültig: ${parsed.errors.join(" ")}`)
+      }
+
+      const finalOutput = generatedDocumentToMarkdown(parsed.document)
 
       // Save to results storage if successful
       if (finalOutput && !finalOutput.startsWith("⚠️") && usedModelId) {
