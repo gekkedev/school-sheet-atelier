@@ -33,6 +33,7 @@ export const MODEL_APP_CONFIG: AppConfig = {
 
 export const MODEL_CACHED_FLAG_KEY = "schoolsheet-atelier-model-cache"
 export const MODEL_SELECTION_KEY = "schoolsheet-atelier-selected-model"
+export const TEMPERATURE_KEY = "schoolsheet-atelier-temperature"
 
 export const DEFAULT_TEMPERATURE = 0.4
 export const DEFAULT_MAX_TOKENS = 2048

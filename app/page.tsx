@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, memo } from "react"
+import { useCallback, useEffect, useMemo, useState, memo, type FormEvent } from "react"
 import { ModelLoader } from "@/components/model-loader"
+import { ProviderSettings, type AiProvider } from "@/components/provider-settings"
 import { PDFPreview } from "@/components/pdf-preview"
 import { WebLLMProvider, useWebLLMContext } from "@/context/web-llm-context"
-import { MODEL_LABELS } from "@/lib/model"
+import { DEFAULT_TEMPERATURE, MODEL_LABELS, TEMPERATURE_KEY } from "@/lib/model"
 import { exportToPDF, exportToDOCX } from "@/lib/export"
 import {
   GENERATED_DOCUMENT_SCHEMA,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/generated-document"
 import { SUBJECTS, type Grade, type Subject, type SubjectId, type Topic } from "@/data/topics"
 import { DOCUMENT_TYPES, getDocumentType, type DocumentType } from "@/data/document-types"
+import { formatEuroCents, generateWithOpenRouter } from "@/lib/openrouter"
 
 type GradeFilter = Grade | "Alle"
 
@@ -25,6 +27,9 @@ type GenerationItem = {
   grade: Grade
   subjectId: SubjectId
   modelId: string | null
+  provider?: AiProvider
+  totalCostEuroCents?: number
+  temperature?: number
   output: string
   error: string | null
   timestamp: number
@@ -38,6 +43,8 @@ type StoredResult = {
   topic: Topic
   grade: Grade
   modelId: string
+  provider?: AiProvider
+  totalCostEuroCents?: number
   output: string
   subjectId: SubjectId
   documentType?: string
@@ -58,7 +65,7 @@ interface QueueItemProps {
   onCancel: () => void
   onCopy: (output: string) => void
   onDelete: () => void
-  onModelClick: (modelId: string) => void
+  onModelClick: (modelId: string, provider: AiProvider) => void
   onDownloadPDF: () => void
   onDownloadDOCX: () => void
 }
@@ -121,13 +128,16 @@ const QueueItem = memo(function QueueItem({
               <span
                 onClick={e => {
                   e.stopPropagation()
-                  onModelClick(item.modelId!)
+                  onModelClick(item.modelId!, item.provider ?? "local")
                 }}
                 className="cursor-pointer hover:text-slate-700 hover:underline"
               >
                 {MODEL_LABELS[item.modelId] ?? item.modelId}
               </span>
             </span>
+          )}
+          {item.totalCostEuroCents !== undefined && (
+            <span className="text-xs text-slate-500">Kosten: {formatEuroCents(item.totalCostEuroCents)}</span>
           )}
         </button>
         <div className="flex items-center gap-3">
@@ -233,7 +243,10 @@ function deleteResultFromStorage(id: string) {
 function loadQueueFromStorage(): GenerationItem[] {
   try {
     const stored = localStorage.getItem(QUEUE_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : []
+    const queue: GenerationItem[] = stored ? JSON.parse(stored) : []
+    return queue.map(item =>
+      item.status === "running" ? { ...item, status: "pending", output: "", error: null } : item
+    )
   } catch (error) {
     console.warn("Failed to load queue from localStorage", error)
     return []
@@ -286,7 +299,15 @@ function PageContent() {
   const [activeSubjectId, setActiveSubjectId] = useState<SubjectId>("deutsch")
   const [activeGrade, setActiveGrade] = useState<GradeFilter>("Alle")
   const [selectedModelId, setSelectedModelId] = useState<string>("")
+  const [provider, setProvider] = useState<AiProvider>("local")
+  const [openRouterModel, setOpenRouterModel] = useState("")
+  const [openRouterToken, setOpenRouterToken] = useState("")
+  const [openRouterGenerating, setOpenRouterGenerating] = useState(false)
+  const [openRouterUsageRefresh, setOpenRouterUsageRefresh] = useState(0)
+  const [providerSettingsReady, setProviderSettingsReady] = useState(false)
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>("worksheet")
+  const [customTopic, setCustomTopic] = useState("")
+  const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
   const webllm = useWebLLMContext()
   const {
     status: engineStatus,
@@ -304,9 +325,20 @@ function PageContent() {
   const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle")
   const [hydrated, setHydrated] = useState(false)
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
+  const handleProviderChange = useCallback((value: AiProvider) => setProvider(value), [])
+  const handleOpenRouterModelChange = useCallback((value: string) => setOpenRouterModel(value), [])
+  const handleOpenRouterTokenChange = useCallback((value: string) => {
+    setOpenRouterToken(value)
+    setProviderSettingsReady(true)
+  }, [])
 
   useEffect(() => {
     setHydrated(true)
+    const storedTemperature = localStorage.getItem(TEMPERATURE_KEY)
+    if (storedTemperature !== null) {
+      const value = Number(storedTemperature)
+      if (Number.isFinite(value) && value >= 0 && value <= 1.2) setTemperature(value)
+    }
     const loadedQueue = loadQueueFromStorage()
     setQueue(loadedQueue)
     // Expand the latest item by default
@@ -320,6 +352,10 @@ function PageContent() {
       saveQueueToStorage(queue)
     }
   }, [queue, hydrated])
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(TEMPERATURE_KEY, String(temperature))
+  }, [temperature, hydrated])
 
   useEffect(() => {
     setActiveGrade("Alle")
@@ -368,7 +404,9 @@ function PageContent() {
         topic: specificPrompt ? { ...topic, samplePrompts: [specificPrompt] } : topic,
         grade: gradeForPrompt,
         subjectId: activeSubject.id,
-        modelId: null,
+        modelId: provider === "openrouter" ? openRouterModel || null : null,
+        provider,
+        temperature,
         output: "",
         error: null,
         timestamp: Date.now(),
@@ -380,14 +418,34 @@ function PageContent() {
       // Expand the newly added item
       setExpandedItemId(newItem.id)
     },
-    [activeSubject.id, determineGrade, selectedDocumentType]
+    [activeSubject.id, determineGrade, selectedDocumentType, provider, openRouterModel, temperature]
+  )
+
+  const handleCustomTopicSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      const topic = customTopic.trim()
+      if (!topic) return
+      handleGenerate({
+        id: `custom-${Date.now()}`,
+        label: topic,
+        grades: [activeGrade === "Alle" ? "3" : activeGrade],
+        description: topic,
+        focus: [],
+        samplePrompts: [],
+        category: "custom"
+      })
+      setCustomTopic("")
+    },
+    [activeGrade, customTopic, handleGenerate]
   )
 
   const processQueue = useCallback(async () => {
     const pending = queue.find(item => item.status === "pending")
-    if (!pending || isGenerating) return
+    if (!pending || !providerSettingsReady || isGenerating || openRouterGenerating) return
 
-    const usedModelId = getCurrentModelId() ?? activeModelId ?? null
+    const usedProvider = pending.provider ?? "local"
+    let usedModelId = usedProvider === "openrouter" ? pending.modelId : (getCurrentModelId() ?? activeModelId ?? null)
 
     setQueue(prev =>
       prev.map(item => (item.id === pending.id ? { ...item, status: "running" as const, modelId: usedModelId } : item))
@@ -395,7 +453,15 @@ function PageContent() {
     setCopyStatus("idle")
 
     try {
-      await initialize()
+      if (usedProvider === "local") {
+        await initialize()
+        usedModelId = getCurrentModelId() ?? activeModelId
+      }
+      if (usedProvider === "openrouter") {
+        if (!openRouterToken) throw new Error("Bitte zuerst einen OpenRouter API-Token eingeben.")
+        if (!usedModelId) throw new Error("Bitte zuerst ein OpenRouter-Modell auswählen.")
+        setOpenRouterGenerating(true)
+      }
 
       const docType = getDocumentType(pending.documentType ?? "worksheet")
 
@@ -439,42 +505,64 @@ function PageContent() {
         .filter(Boolean)
         .join("\n\n")
 
-      const response = await generate({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.4,
-        onChunk: (chunk: string) => {
-          setQueue(prev =>
-            prev.map(item =>
-              item.id === pending.id && item.status === "running" ? { ...item, output: item.output + chunk } : item
-            )
-          )
-        }
-      })
+      const messages = [
+        { role: "system" as const, content: systemPrompt },
+        { role: "user" as const, content: userPrompt }
+      ]
+      const usedTemperature = pending.temperature ?? DEFAULT_TEMPERATURE
+      let totalCostEuroCents = 0
+      const response =
+        usedProvider === "openrouter"
+          ? await generateWithOpenRouter({
+              token: openRouterToken,
+              model: usedModelId!,
+              messages,
+              temperature: usedTemperature
+            })
+          : await generate({
+              messages,
+              temperature: usedTemperature,
+              onChunk: (chunk: string) => {
+                setQueue(prev =>
+                  prev.map(item =>
+                    item.id === pending.id && item.status === "running"
+                      ? { ...item, output: item.output + chunk }
+                      : item
+                  )
+                )
+              }
+            })
+      if ("costEuroCents" in response) totalCostEuroCents += response.costEuroCents
+      if ("model" in response) usedModelId = response.model
 
       const output = response.text.trim()
       const expectedDocument = { docType: docType.id, grade: Number(pending.grade), subject: subjectTitle }
       let parsed = parseGeneratedDocument(output, expectedDocument)
 
       if (!parsed.document) {
-        const repair = await generate({
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: [
-                "Repariere die folgende ungültige Ausgabe.",
-                `Validierungsfehler:\n- ${parsed.errors.join("\n- ")}`,
-                `Verwende exakt dieses JSON-Schema:\n${GENERATED_DOCUMENT_SCHEMA}`,
-                "Gib ausschließlich das korrigierte JSON-Objekt zurück.",
-                `Ungültige Ausgabe:\n${output}`
-              ].join("\n\n")
-            }
-          ],
-          temperature: 0
-        })
+        const repairMessages = [
+          { role: "system" as const, content: systemPrompt },
+          {
+            role: "user" as const,
+            content: [
+              "Repariere die folgende ungültige Ausgabe.",
+              `Validierungsfehler:\n- ${parsed.errors.join("\n- ")}`,
+              `Verwende exakt dieses JSON-Schema:\n${GENERATED_DOCUMENT_SCHEMA}`,
+              "Gib ausschließlich das korrigierte JSON-Objekt zurück.",
+              `Ungültige Ausgabe:\n${output}`
+            ].join("\n\n")
+          }
+        ]
+        const repair =
+          usedProvider === "openrouter"
+            ? await generateWithOpenRouter({
+                token: openRouterToken,
+                model: usedModelId!,
+                messages: repairMessages,
+                temperature: 0
+              })
+            : await generate({ messages: repairMessages, temperature: 0 })
+        if ("costEuroCents" in repair) totalCostEuroCents += repair.costEuroCents
         parsed = parseGeneratedDocument(repair.text.trim(), expectedDocument)
       }
 
@@ -492,6 +580,8 @@ function PageContent() {
           topic: pending.topic,
           grade: pending.grade,
           modelId: usedModelId,
+          provider: usedProvider,
+          totalCostEuroCents,
           output: finalOutput,
           subjectId: pending.subjectId,
           documentType: pending.documentType
@@ -501,7 +591,14 @@ function PageContent() {
       setQueue(prev =>
         prev.map(item =>
           item.id === pending.id
-            ? { ...item, status: "success" as const, output: finalOutput, modelId: usedModelId }
+            ? {
+                ...item,
+                status: "success" as const,
+                output: finalOutput,
+                modelId: usedModelId,
+                provider: usedProvider,
+                totalCostEuroCents
+              }
             : item
         )
       )
@@ -511,12 +608,27 @@ function PageContent() {
       setQueue(prev =>
         prev.map(item => (item.id === pending.id ? { ...item, status: "error" as const, error: message } : item))
       )
+    } finally {
+      if (usedProvider === "openrouter") {
+        setOpenRouterGenerating(false)
+        setOpenRouterUsageRefresh(value => value + 1)
+      }
     }
-  }, [queue, isGenerating, initialize, generate, getCurrentModelId, activeModelId])
+  }, [
+    queue,
+    isGenerating,
+    openRouterGenerating,
+    initialize,
+    generate,
+    getCurrentModelId,
+    activeModelId,
+    openRouterToken,
+    providerSettingsReady
+  ])
 
   useEffect(() => {
     processQueue()
-  }, [queue, isGenerating])
+  }, [queue, isGenerating, openRouterGenerating, providerSettingsReady])
 
   const handleCancel = useCallback(
     async (itemId: string) => {
@@ -585,7 +697,6 @@ function PageContent() {
   const allTopics = useMemo(() => SUBJECTS.flatMap(subject => subject.topics), [])
   const currentItem = queue.find(item => item.status === "running") ?? queue[queue.length - 1]
 
-  const activeModelLabel = activeModelId ? (MODEL_LABELS[activeModelId] ?? activeModelId) : "Kein Modell geladen"
   const isEngineBusy = engineStatus === "initializing" || engineStatus === "checking"
 
   if (!hydrated) {
@@ -627,15 +738,66 @@ function PageContent() {
           </div>
         </header>
 
-        <ModelLoader externalSelectedModelId={selectedModelId} onModelIdChange={setSelectedModelId} />
+        <ProviderSettings
+          provider={provider}
+          onProviderChange={handleProviderChange}
+          selectedModel={openRouterModel}
+          onModelChange={handleOpenRouterModelChange}
+          onTokenChange={handleOpenRouterTokenChange}
+          usageRefresh={openRouterUsageRefresh}
+        />
+
+        {provider === "local" && (
+          <ModelLoader externalSelectedModelId={selectedModelId} onModelIdChange={setSelectedModelId} />
+        )}
 
         <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">Generator</span>
             <h2 className="text-xl font-semibold text-slate-900">Entwurf aus einem Thema starten</h2>
-            <p className="text-sm text-slate-600">
-              Aktives Modell: {activeModelLabel}. Temperatur 0,4 (fokussiert auf Zuverlässigkeit).
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <label htmlFor="temperature" className="text-sm font-semibold text-slate-700">
+                Temperatur: {temperature.toLocaleString("de-DE", { minimumFractionDigits: 1 })}
+              </label>
+              {temperature !== DEFAULT_TEMPERATURE && (
+                <button
+                  type="button"
+                  onClick={() => setTemperature(DEFAULT_TEMPERATURE)}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline"
+                >
+                  Auf Standard zurücksetzen
+                </button>
+              )}
+            </div>
+            <input
+              id="temperature"
+              type="range"
+              min="0"
+              max="1.2"
+              step="0.1"
+              value={temperature}
+              onChange={event => setTemperature(Number(event.target.value))}
+              className="w-full accent-slate-900"
+            />
+            <p className="text-xs text-slate-500">
+              Niedriger erzeugt gleichmäßigere Ergebnisse. Höher sorgt für mehr Abwechslung. Für Schulmaterialien
+              empfehlen wir 0,4.
             </p>
+            {temperature >= 0.9 && (
+              <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                <p className="font-semibold">Sehr hohe Einstellung</p>
+                <p>Aufgaben und Lösungen können ungenauer oder widersprüchlich werden. Nutze besser 0,4.</p>
+              </div>
+            )}
+            {temperature <= 0.1 && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p className="font-semibold">Sehr niedrige Einstellung</p>
+                <p>Die Ergebnisse können starr und wiederholend wirken. Nutze besser 0,4.</p>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">
@@ -685,6 +847,32 @@ function PageContent() {
             </div>
           )}
 
+          <form
+            onSubmit={handleCustomTopicSubmit}
+            className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-end"
+          >
+            <label className="flex flex-1 flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Eigenes Thema
+              <input
+                type="text"
+                value={customTopic}
+                onChange={event => setCustomTopic(event.target.value)}
+                placeholder="z. B. Die Schöpfungsgeschichte und Verantwortung für die Umwelt"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal normal-case tracking-normal text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400/60"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={
+                !customTopic.trim() ||
+                (provider === "local" ? isEngineBusy || !webgpu.supported : !openRouterToken || !openRouterModel)
+              }
+              className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              Entwurf erstellen
+            </button>
+          </form>
+
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
             {queue.length === 0 && (
               <p>
@@ -720,9 +908,13 @@ function PageContent() {
                 onDelete={() => handleDelete(item.id)}
                 onDownloadPDF={() => handleDownloadPDF(item)}
                 onDownloadDOCX={() => handleDownloadDOCX(item)}
-                onModelClick={modelId => {
-                  setSelectedModelId(modelId)
-                  document.querySelector("[data-model-loader]")?.scrollIntoView({ behavior: "smooth" })
+                onModelClick={(modelId, itemProvider) => {
+                  setProvider(itemProvider)
+                  if (itemProvider === "openrouter") setOpenRouterModel(modelId)
+                  else setSelectedModelId(modelId)
+                  document
+                    .querySelector(itemProvider === "local" ? "[data-model-loader]" : "main")
+                    ?.scrollIntoView({ behavior: "smooth" })
                 }}
               />
             ))}
