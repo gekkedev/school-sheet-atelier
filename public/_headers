@@ -1,0 +1,9 @@
+# Cloudflare Pages reads this file from the deployed static output.
+# These rules set response headers for the matching paths in that deployment.
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Type: application/javascript; charset=utf-8
+
+/manifest.webmanifest
+  Cache-Control: no-cache

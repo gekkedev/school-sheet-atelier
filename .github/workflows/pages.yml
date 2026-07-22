@@ -28,9 +28,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prettier --check .
+      - run: pnpm test
       - run: pnpm run build
         env:
           NEXT_PUBLIC_BASE_PATH: "/${{ github.event.repository.name }}"
+      - run: pnpm run check:pwa -- "/${{ github.event.repository.name }}"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
