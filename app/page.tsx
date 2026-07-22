@@ -811,7 +811,7 @@ function PageContent() {
                     type="button"
                     onClick={() => setSelectedDocumentType(docType.id)}
                     className={cx(
-                      "group flex flex-col gap-1 rounded-xl border p-3 text-left transition",
+                      "group flex flex-col gap-1 cursor-pointer rounded-xl border p-3 text-left transition",
                       isSelected
                         ? "border-slate-900 bg-slate-900 text-white shadow-sm"
                         : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
