@@ -125,7 +125,8 @@ export async function fetchOpenRouterModels(token: string): Promise<OpenRouterMo
 
 export async function fetchOpenRouterKeyInfo(token: string): Promise<OpenRouterKeyInfo> {
   const response = await fetch("https://openrouter.ai/api/v1/key", {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store"
   })
   if (!response.ok) throw new Error(`OpenRouter-Ausgabenlimit konnte nicht geladen werden (${response.status}).`)
   const body = (await response.json()) as {
