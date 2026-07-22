@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 
-const outDir = process.argv[2] ?? "out"
-const basePath = process.argv[3] ?? ""
+const outDir = "out"
+const basePath = process.argv.slice(2).find(argument => argument !== "--") ?? ""
 const requiredFiles = [
   "index.html",
   "manifest.webmanifest",
