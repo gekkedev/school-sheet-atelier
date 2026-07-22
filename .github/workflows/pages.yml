@@ -24,7 +24,7 @@ jobs:
           version: 9
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prettier --check .
@@ -35,7 +35,7 @@ jobs:
       - name: Build for Cloudflare Pages
         run: pnpm run build
       - run: pnpm run check:pwa
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cloudflare-pages
           path: ./out
@@ -63,7 +63,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: cloudflare-pages
           path: ./out
