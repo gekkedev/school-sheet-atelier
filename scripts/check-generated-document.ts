@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { generatedDocumentToMarkdown, parseGeneratedDocument } from "../lib/generated-document.ts"
+import { generatedDocumentToMarkdown, parseGeneratedDocument } from "../lib/generated-document"
 import {
   estimateEuroCentsPerPage,
   formatUsdAsEuro,
@@ -8,7 +8,7 @@ import {
   isMuskAffiliatedOpenRouterModel,
   openRouterLimitPercent,
   rankOpenRouterModels
-} from "../lib/openrouter.ts"
+} from "../lib/openrouter"
 
 const raw = JSON.stringify({
   docType: "worksheet",
