@@ -6,6 +6,7 @@ import {
   isChinaAffiliatedOpenRouterModel,
   isFreeOpenRouterModel,
   isMuskAffiliatedOpenRouterModel,
+  isTextOnlyOpenRouterModel,
   openRouterLimitPercent,
   rankOpenRouterModels
 } from "../lib/openrouter"
@@ -53,6 +54,22 @@ const free = { id: "example/free", name: "Free", pricing: { prompt: "0", complet
 const paid = { id: "example/paid", name: "Paid", pricing: { prompt: "0.000001", completion: "0.000002", request: "0" } }
 assert.equal(isFreeOpenRouterModel(free), true)
 assert.equal(isFreeOpenRouterModel(paid), false)
+assert.equal(
+  isTextOnlyOpenRouterModel({
+    ...free,
+    architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] }
+  }),
+  true
+)
+assert.equal(
+  isTextOnlyOpenRouterModel({
+    ...free,
+    id: "openai/gpt-5-image-mini",
+    architecture: { input_modalities: ["text", "image"], output_modalities: ["text", "image"] }
+  }),
+  false
+)
+assert.equal(isTextOnlyOpenRouterModel(free), false)
 assert.equal(estimateEuroCentsPerPage(free), 0)
 assert.ok(Math.abs(estimateEuroCentsPerPage(paid) - 0.23) < 1e-10)
 assert.equal(openRouterLimitPercent({ limit: 10, limitRemaining: 2.5, usage: 99 }), 75)

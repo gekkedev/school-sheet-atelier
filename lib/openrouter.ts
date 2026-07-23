@@ -7,6 +7,10 @@ export type OpenRouterModel = {
   id: string
   name: string
   pricing: { prompt: string; completion: string; request?: string }
+  architecture?: {
+    input_modalities?: string[]
+    output_modalities?: string[]
+  }
 }
 
 export type OpenRouterKeyInfo = {
@@ -26,6 +30,12 @@ export function isFreeOpenRouterModel(model: OpenRouterModel): boolean {
   return [model.pricing.prompt, model.pricing.completion, model.pricing.request ?? "0"].every(
     value => Number(value) === 0
   )
+}
+
+export function isTextOnlyOpenRouterModel(model: OpenRouterModel): boolean {
+  const input = model.architecture?.input_modalities ?? []
+  const output = model.architecture?.output_modalities ?? []
+  return input.includes("text") && output.length === 1 && output[0] === "text"
 }
 
 function modelIdentity(model: OpenRouterModel): string {
@@ -120,7 +130,9 @@ export async function fetchOpenRouterModels(token: string): Promise<OpenRouterMo
   )
   if (!response.ok) throw new Error(`OpenRouter-Modellliste konnte nicht geladen werden (${response.status}).`)
   const body = (await response.json()) as { data?: OpenRouterModel[] }
-  return rankOpenRouterModels((body.data ?? []).filter(model => model.id && model.name && model.pricing))
+  return rankOpenRouterModels(
+    (body.data ?? []).filter(model => model.id && model.name && model.pricing && isTextOnlyOpenRouterModel(model))
+  )
 }
 
 export async function fetchOpenRouterKeyInfo(token: string): Promise<OpenRouterKeyInfo> {
