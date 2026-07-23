@@ -24,6 +24,25 @@ const valid = parseGeneratedDocument(raw, expected)
 assert.equal(valid.errors.length, 0)
 assert.ok(valid.document)
 assert.match(generatedDocumentToMarkdown(valid.document), /# Lösungen/)
+assert.match(
+  generatedDocumentToMarkdown({
+    ...valid.document,
+    sections: [
+      {
+        kind: "tasks",
+        items: [
+          {
+            id: "task-1",
+            type: "multiple-choice",
+            prompt: "Was stimmt?",
+            options: ["Antwort eins", "Antwort zwei"]
+          }
+        ]
+      }
+    ]
+  }),
+  /Was stimmt\?\n\n□ a\) Antwort eins\n\n□ b\) Antwort zwei/
+)
 assert.deepEqual(parseGeneratedDocument(raw.replace('"task-1":"ging"', '"other":"ging"'), expected).errors, [
   "solutions must contain exactly one entry for every task id."
 ])
