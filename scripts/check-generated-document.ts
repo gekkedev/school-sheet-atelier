@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { getDocumentType } from "../data/document-types"
 import { generatedDocumentToMarkdown, parseGeneratedDocument } from "../lib/generated-document"
 import {
   estimateEuroCentsPerPage,
@@ -49,6 +50,7 @@ assert.deepEqual(parseGeneratedDocument(raw.replace('"task-1":"ging"', '"other":
 ])
 
 console.log("generated-document checks passed")
+assert.equal(getDocumentType("self-study-workbook").label, "Selbstlernheft")
 
 const free = { id: "example/free", name: "Free", pricing: { prompt: "0", completion: "0", request: "0" } }
 const paid = { id: "example/paid", name: "Paid", pricing: { prompt: "0.000001", completion: "0.000002", request: "0" } }

@@ -179,6 +179,31 @@ export const DOCUMENT_TYPES: DocumentType[] = [
       "4. Lösungsblatt für alle Stationen",
       "5. Reflexionsbogen für Schüler"
     ]
+  },
+  {
+    id: "self-study-workbook",
+    label: "Selbstlernheft",
+    description: "Ausführliches Lernheft zum selbstständigen Erarbeiten",
+    icon: "📘",
+    systemPromptAddition:
+      "Du erstellst ein ausführliches, selbsterklärendes Lernheft, mit dem Grundschulkinder ein Thema möglichst selbstständig erarbeiten, üben und überprüfen können.",
+    taskInstructions: [
+      "1. Kindgerechter Titel, Inhaltsübersicht und Erklärung: Das lernst du",
+      "2. Benötigtes Vorwissen und Materialien in kurzen Stichpunkten",
+      "3. 5-7 aufeinander aufbauende Lernkapitel; jedes Kapitel enthält:",
+      "   - eine kurze, leicht verständliche Erklärung mit höchstens einem neuen Lernschritt",
+      "   - mindestens ein vollständig vorgemachtes Beispiel",
+      "   - eine angeleitete Übung mit Hilfestellung",
+      "   - 2-4 selbstständige Übungen mit genügend Schreibraum",
+      "   - einen Merksatz in einfacher Sprache",
+      "4. Nach jeweils zwei Kapiteln: Mini-Selbstcheck mit 3 abwechslungsreichen Aufgaben",
+      "5. Hilfekasten mit Tipps, ohne die Lösung direkt zu verraten",
+      "6. Abschluss: Das kann ich jetzt – kindgerechte Checkliste mit □ Kästchen",
+      "7. Abschlusstest mit gemischten Aufgaben zum gesamten Thema",
+      "8. Vollständiger, klar zugeordneter Lösungsteil zur Selbstkontrolle",
+      "9. Kurze Weiterlern-Idee für Kinder, die früher fertig sind",
+      "10. Verwende kurze Sätze, klare Zwischenüberschriften und abwechslungsreiche Aufgaben; setze kein Wissen voraus, das nicht vorher erklärt wurde"
+    ]
   }
 ]
 

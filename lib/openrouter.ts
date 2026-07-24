@@ -156,6 +156,7 @@ export async function generateWithOpenRouter(options: {
   model: string
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>
   temperature: number
+  maxTokens?: number
 }): Promise<{ text: string; costEuroCents: number; model: string }> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -168,7 +169,7 @@ export async function generateWithOpenRouter(options: {
       model: options.model,
       messages: options.messages,
       temperature: options.temperature,
-      max_completion_tokens: 2048
+      max_completion_tokens: options.maxTokens ?? 2048
     })
   })
   const body = (await response.json()) as {

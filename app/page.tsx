@@ -458,6 +458,8 @@ function PageContent() {
       }
 
       const docType = getDocumentType(pending.documentType ?? "worksheet")
+      // capped for self-study-workbook because it can generate very long outputs that exceed the model's token limit
+      const maxTokens = docType.id === "self-study-workbook" ? 3072 : undefined
 
       const systemPrompt = [
         "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen.",
@@ -503,11 +505,13 @@ function PageContent() {
               token: openRouterToken,
               model: usedModelId!,
               messages,
-              temperature: usedTemperature
+              temperature: usedTemperature,
+              maxTokens
             })
           : await generate({
               messages,
               temperature: usedTemperature,
+              maxTokens,
               onChunk: (chunk: string) => {
                 setQueue(prev =>
                   prev.map(item =>
@@ -851,9 +855,7 @@ function PageContent() {
             </label>
             <button
               type="submit"
-              disabled={
-                !customTopic.trim() || generationUnavailable
-              }
+              disabled={!customTopic.trim() || generationUnavailable}
               className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               Entwurf erstellen

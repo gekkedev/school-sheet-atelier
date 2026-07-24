@@ -10,7 +10,7 @@ SchoolSheet-Atelier generates elementary school German and Religion exams, works
 ## Features
 
 - On-device LLM (WebLLM plus WebGPU). First model download shows a progress bar, then cached offline.
-- 10 different document types: worksheets, exams, reading passages, cloze texts, multiple-choice quizzes, flashcards, projects, and more.
+- 11 different document types: worksheets, self-study workbooks, exams, reading passages, cloze texts, multiple-choice quizzes, flashcards, projects, and more.
 - Worksheet and exam generator with grade, subject, and topic selection.
 - Live streaming preview shows content as it's generated.
 - Multiple generation queue with status tracking and cancellation.
@@ -52,7 +52,7 @@ You can select models in the UI or change the default in `lib/model.ts`. The app
 
 ## Document Types
 
-The app supports 10 different document types, each with specialized prompts and structure:
+The app supports 11 different document types, each with specialized prompts and structure:
 
 1. **Arbeitsblatt (Worksheet)** - Structured practice tasks with solutions
 2. **Klassenarbeit (Exam)** - Test format with point distribution and grading scale
@@ -64,6 +64,7 @@ The app supports 10 different document types, each with specialized prompts and 
 8. **Antwortbogen (Answer Sheet)** - Blank form template for student responses
 9. **Projektauftrag (Project Assignment)** - Multi-week project with phase plan
 10. **Stationenlernen (Station Learning)** - 5-7 learning stations for independent work
+11. **Selbstlernheft (Self-study Workbook)** - Guided explanations, examples, practice, self-checks, and solutions
 
 Each document type has tailored instructions to ensure appropriate formatting, structure, and pedagogical approach.
 
