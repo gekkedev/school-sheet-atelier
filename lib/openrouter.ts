@@ -151,12 +151,61 @@ export async function fetchOpenRouterKeyInfo(token: string): Promise<OpenRouterK
   }
 }
 
+export async function readOpenRouterStream(
+  body: ReadableStream<Uint8Array>,
+  onChunk: (chunk: string) => void
+): Promise<{ text: string; cost: number; model?: string }> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  let text = ""
+  let cost = 0
+  let model: string | undefined
+
+  const processEvent = (event: string) => {
+    const data = event
+      .split(/\r?\n/)
+      .filter(line => line.startsWith("data:"))
+      .map(line => line.slice(5).trimStart())
+      .join("\n")
+    if (!data || data === "[DONE]") return
+
+    const chunk = JSON.parse(data) as {
+      error?: { message?: string }
+      model?: string
+      choices?: Array<{ delta?: { content?: string } }>
+      usage?: { cost?: number }
+    }
+    if (chunk.error) throw new Error(chunk.error.message ?? "OpenRouter-Stream fehlgeschlagen.")
+    model = chunk.model ?? model
+    cost = chunk.usage?.cost ?? cost
+    const content = chunk.choices?.[0]?.delta?.content
+    if (content) {
+      text += content
+      onChunk(content)
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    buffer += decoder.decode(value, { stream: !done })
+    const events = buffer.split(/\r?\n\r?\n/)
+    buffer = events.pop() ?? ""
+    events.forEach(processEvent)
+    if (done) break
+  }
+  if (buffer.trim()) processEvent(buffer)
+
+  return { text, cost, model }
+}
+
 export async function generateWithOpenRouter(options: {
   token: string
   model: string
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>
   temperature: number
   maxTokens?: number
+  onChunk?: (chunk: string) => void
 }): Promise<{ text: string; costEuroCents: number; model: string }> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -169,16 +218,32 @@ export async function generateWithOpenRouter(options: {
       model: options.model,
       messages: options.messages,
       temperature: options.temperature,
-      max_completion_tokens: options.maxTokens ?? 2048
+      max_completion_tokens: options.maxTokens ?? 2048,
+      stream: Boolean(options.onChunk)
     })
   })
+  if (!response.ok) {
+    const body = (await response.json()) as { error?: { message?: string } }
+    throw new Error(body.error?.message ?? `OpenRouter-Anfrage fehlgeschlagen (${response.status}).`)
+  }
+
+  if (options.onChunk) {
+    if (!response.body) throw new Error("OpenRouter hat keinen lesbaren Stream geliefert.")
+    const streamed = await readOpenRouterStream(response.body, options.onChunk)
+    if (!streamed.text) throw new Error("OpenRouter hat keine Ausgabe geliefert.")
+    return {
+      text: streamed.text,
+      model: streamed.model ?? options.model,
+      costEuroCents: streamed.cost * USD_TO_EUR * 100
+    }
+  }
+
   const body = (await response.json()) as {
     error?: { message?: string }
     model?: string
     choices?: Array<{ message?: { content?: string } }>
     usage?: { cost?: number }
   }
-  if (!response.ok) throw new Error(body.error?.message ?? `OpenRouter-Anfrage fehlgeschlagen (${response.status}).`)
   const text = body.choices?.[0]?.message?.content ?? ""
   if (!text) throw new Error("OpenRouter hat keine Ausgabe geliefert.")
   return {

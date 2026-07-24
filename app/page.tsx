@@ -513,7 +513,16 @@ function PageContent() {
               model: usedModelId!,
               messages,
               temperature: usedTemperature,
-              maxTokens
+              maxTokens,
+              onChunk: (chunk: string) => {
+                setQueue(prev =>
+                  prev.map(item =>
+                    item.id === pending.id && item.status === "running"
+                      ? { ...item, output: item.output + chunk }
+                      : item
+                  )
+                )
+              }
             })
           : await generate({
               messages,

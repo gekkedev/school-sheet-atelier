@@ -9,6 +9,7 @@ import {
   isMuskAffiliatedOpenRouterModel,
   isTextOnlyOpenRouterModel,
   openRouterLimitPercent,
+  readOpenRouterStream,
   rankOpenRouterModels
 } from "../lib/openrouter"
 
@@ -72,6 +73,23 @@ assert.equal(
   false
 )
 assert.equal(isTextOnlyOpenRouterModel(free), false)
+const streamChunks: string[] = []
+const stream = new ReadableStream<Uint8Array>({
+  start(controller) {
+    const encoder = new TextEncoder()
+    controller.enqueue(encoder.encode('data: {"model":"example/text","choices":[{"delta":{"content":"Hal"}}]}\n\n'))
+    controller.enqueue(
+      encoder.encode(
+        'data: {"choices":[{"delta":{"content":"lo"}}],"usage":{"cost":0.01}}\n\ndata: [DONE]\n\n'
+      )
+    )
+    controller.close()
+  }
+})
+const streamCheck = readOpenRouterStream(stream, chunk => streamChunks.push(chunk)).then(result => {
+  assert.deepEqual(result, { text: "Hallo", cost: 0.01, model: "example/text" })
+  assert.deepEqual(streamChunks, ["Hal", "lo"])
+})
 assert.equal(estimateEuroCentsPerPage(free), 0)
 assert.ok(Math.abs(estimateEuroCentsPerPage(paid) - 0.23) < 1e-10)
 assert.equal(openRouterLimitPercent({ limit: 10, limitRemaining: 2.5, usage: 99 }), 75)
@@ -97,4 +115,10 @@ assert.deepEqual(
   ranked.map(model => model.id),
   ["anthropic/claude-future-opus", "google/gemini-future-pro", "google/gemma-4", "google/gemma-2", "unknown/api-best"]
 )
-console.log("openrouter checks passed")
+streamCheck.then(
+  () => console.log("openrouter checks passed"),
+  error => {
+    console.error(error)
+    process.exitCode = 1
+  }
+)
