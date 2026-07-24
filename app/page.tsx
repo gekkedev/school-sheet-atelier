@@ -92,6 +92,13 @@ const QueueItem = memo(function QueueItem({
           className={cx("flex flex-1 flex-col gap-1 text-left", hasContent ? "cursor-pointer" : "")}
         >
           <div className="flex items-center gap-2">
+            {item.status === "running" && (
+              <span
+                role="status"
+                aria-label="Wird erstellt"
+                className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600"
+              />
+            )}
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {item.status === "pending" && "Wartend"}
               {item.status === "running" && "Live-Vorschau"}
