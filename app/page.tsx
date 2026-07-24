@@ -33,7 +33,6 @@ type GenerationItem = {
   output: string
   error: string | null
   timestamp: number
-  specificPrompt?: string
   documentType?: string
 }
 
@@ -118,9 +117,6 @@ const QueueItem = memo(function QueueItem({
           </span>
           {item.documentType && (
             <span className="text-xs text-slate-500">Typ: {getDocumentType(item.documentType).label}</span>
-          )}
-          {item.specificPrompt && (
-            <span className="text-xs italic text-slate-500 line-clamp-2">Impuls: {item.specificPrompt}</span>
           )}
           {item.modelId && (
             <span className="text-xs text-slate-500">
@@ -396,12 +392,12 @@ function PageContent() {
   )
 
   const handleGenerate = useCallback(
-    async (topic: Topic, specificPrompt?: string) => {
+    async (topic: Topic) => {
       const gradeForPrompt = determineGrade(topic)
       const newItem: GenerationItem = {
         id: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
         status: "pending",
-        topic: specificPrompt ? { ...topic, samplePrompts: [specificPrompt] } : topic,
+        topic,
         grade: gradeForPrompt,
         subjectId: activeSubject.id,
         modelId: provider === "openrouter" ? openRouterModel || null : null,
@@ -410,7 +406,6 @@ function PageContent() {
         output: "",
         error: null,
         timestamp: Date.now(),
-        specificPrompt,
         documentType: selectedDocumentType
       }
 
@@ -432,7 +427,6 @@ function PageContent() {
         grades: [activeGrade === "Alle" ? "3" : activeGrade],
         description: topic,
         focus: [],
-        samplePrompts: [],
         category: "custom"
       })
       setCustomTopic("")
@@ -473,13 +467,6 @@ function PageContent() {
       ].join(" ")
 
       const focusLine = pending.topic.focus.length > 0 ? `Fokusthemen: ${pending.topic.focus.join(", ")}.` : ""
-      // If a specific prompt was selected, use only that one, otherwise show all available prompts
-      const impulse = pending.specificPrompt
-        ? `Ausgewählter Impuls: ${pending.specificPrompt}`
-        : pending.topic.samplePrompts.length > 0
-          ? `Inspiration aus der Themenbibliothek:\n- ${pending.topic.samplePrompts.join("\n- ")}`
-          : ""
-
       const subjectTitle = SUBJECTS.find(s => s.id === pending.subjectId)?.title ?? pending.subjectId
       const userPrompt = [
         "WICHTIG: Antworte ausschließlich auf Deutsch!",
@@ -490,7 +477,6 @@ function PageContent() {
         `Thema: ${pending.topic.label}`,
         `Beschreibung: ${pending.topic.description}`,
         focusLine,
-        impulse,
         "",
         `Erstelle ein vollständiges ${docType.label} in deutscher Sprache mit folgender Struktur:`,
         "",
@@ -698,6 +684,8 @@ function PageContent() {
   const currentItem = queue.find(item => item.status === "running") ?? queue[queue.length - 1]
 
   const isEngineBusy = engineStatus === "initializing" || engineStatus === "checking"
+  const generationUnavailable =
+    provider === "local" ? isEngineBusy || !webgpu.supported : !openRouterToken || !openRouterModel
 
   if (!hydrated) {
     // Render a static placeholder during SSR
@@ -864,8 +852,7 @@ function PageContent() {
             <button
               type="submit"
               disabled={
-                !customTopic.trim() ||
-                (provider === "local" ? isEngineBusy || !webgpu.supported : !openRouterToken || !openRouterModel)
+                !customTopic.trim() || generationUnavailable
               }
               className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
@@ -1063,42 +1050,20 @@ function PageContent() {
                             </div>
                           </div>
                         )}
-                        {topic.samplePrompts.length > 0 && (
-                          <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              KI-Impulse
-                            </span>
-                            <ul className="flex flex-col gap-2 text-sm text-slate-600">
-                              {topic.samplePrompts.map(prompt => (
-                                <li
-                                  key={topic.id + "-prompt-" + prompt}
-                                  className="group relative flex items-start gap-2"
-                                >
-                                  <span className={cx("mt-1 h-1.5 w-1.5 rounded-full", theme.bullet)} />
-                                  <button
-                                    type="button"
-                                    onClick={e => {
-                                      e.stopPropagation()
-                                      handleGenerate(topic, prompt)
-                                    }}
-                                    disabled={isEngineBusy || !webgpu.supported}
-                                    title="Entwurf erstellen"
-                                    className="relative flex flex-1 cursor-pointer items-start gap-2 text-left transition hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    <span className="flex-1">{prompt}</span>
-                                    <svg
-                                      className="mt-0.5 h-4 w-4 shrink-0 opacity-0 transition group-hover:opacity-100"
-                                      fill="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleGenerate(topic)}
+                          disabled={generationUnavailable}
+                          className="group mt-auto inline-flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                        >
+                          <span>{isTopicLoading ? "Wird erstellt…" : "Thema verwenden"}</span>
+                          <span
+                            aria-hidden="true"
+                            className="text-lg leading-none transition-transform group-hover:translate-x-0.5 group-disabled:translate-x-0"
+                          >
+                            →
+                          </span>
+                        </button>
                       </article>
                     )
                   })}

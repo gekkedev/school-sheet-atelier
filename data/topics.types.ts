@@ -7,7 +7,6 @@ export type Topic = {
   grades: Grade[]
   description: string
   focus: string[]
-  samplePrompts: string[]
   category: string
 }
 
