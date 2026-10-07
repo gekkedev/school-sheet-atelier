@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, memo, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, memo, type FormEvent } from "react"
 import { ModelLoader } from "@/components/model-loader"
 import { ProviderSettings, type AiProvider } from "@/components/provider-settings"
 import { PDFPreview } from "@/components/pdf-preview"
@@ -15,6 +15,8 @@ import {
 import { SUBJECTS, type Grade, type Subject, type SubjectId, type Topic } from "@/data/topics"
 import { DOCUMENT_TYPES, getDocumentType, type DocumentType } from "@/data/document-types"
 import { formatEuroCents, generateWithOpenRouter } from "@/lib/openrouter"
+import { generateStationLearning } from "@/lib/station-learning"
+import { generateSelfStudyWorkbook } from "@/lib/self-study-workbook"
 
 type GradeFilter = Grade | "Alle"
 
@@ -327,6 +329,7 @@ function PageContent() {
   } = webllm
 
   const [queue, setQueue] = useState<GenerationItem[]>([])
+  const activeJob = useRef<{ id: string; controller: AbortController } | null>(null)
   const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle")
   const [hydrated, setHydrated] = useState(false)
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
@@ -451,7 +454,9 @@ function PageContent() {
 
   const processQueue = useCallback(async () => {
     const pending = queue.find(item => item.status === "pending")
-    if (!pending || !providerSettingsReady || isGenerating || openRouterGenerating) return
+    if (!pending || !providerSettingsReady || isGenerating || openRouterGenerating || activeJob.current) return
+    const controller = new AbortController()
+    activeJob.current = { id: pending.id, controller }
 
     const usedProvider = pending.provider ?? "local"
     let usedModelId = usedProvider === "openrouter" ? pending.modelId : (getCurrentModelId() ?? activeModelId ?? null)
@@ -473,8 +478,7 @@ function PageContent() {
       }
 
       const docType = getDocumentType(pending.documentType ?? "worksheet")
-      // capped for self-study-workbook because it can generate very long outputs that exceed the model's token limit
-      const maxTokens = docType.id === "self-study-workbook" ? 3072 : undefined
+      const maxTokens = 2048
 
       const systemPrompt = [
         "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen.",
@@ -508,83 +512,131 @@ function PageContent() {
         .filter(Boolean)
         .join("\n\n")
 
-      const messages = [
-        { role: "system" as const, content: systemPrompt },
-        { role: "user" as const, content: userPrompt }
-      ]
-      const usedTemperature = pending.temperature ?? DEFAULT_TEMPERATURE
       let totalCostEuroCents = 0
-      const response =
-        usedProvider === "openrouter"
-          ? await generateWithOpenRouter({
-              token: openRouterToken,
-              model: usedModelId!,
-              messages,
-              temperature: usedTemperature,
-              maxTokens,
-              onChunk: (chunk: string) => {
-                setQueue(prev =>
-                  prev.map(item =>
-                    item.id === pending.id && item.status === "running"
-                      ? { ...item, output: item.output + chunk }
-                      : item
-                  )
-                )
-              }
-            })
-          : await generate({
-              messages,
-              temperature: usedTemperature,
-              maxTokens,
-              onChunk: (chunk: string) => {
-                setQueue(prev =>
-                  prev.map(item =>
-                    item.id === pending.id && item.status === "running"
-                      ? { ...item, output: item.output + chunk }
-                      : item
-                  )
-                )
-              }
-            })
-      if ("costEuroCents" in response) totalCostEuroCents += response.costEuroCents
-      if ("model" in response) usedModelId = response.model
-
-      const output = response.text.trim()
-      const expectedDocument = { docType: docType.id, grade: Number(pending.grade), subject: subjectTitle }
-      let parsed = parseGeneratedDocument(output, expectedDocument)
-
-      if (!parsed.document) {
-        const repairMessages = [
-          { role: "system" as const, content: systemPrompt },
-          {
-            role: "user" as const,
-            content: [
-              "Repariere die folgende ungültige Ausgabe.",
-              `Validierungsfehler:\n- ${parsed.errors.join("\n- ")}`,
-              `Verwende exakt dieses JSON-Schema:\n${GENERATED_DOCUMENT_SCHEMA}`,
-              "Gib ausschließlich das korrigierte JSON-Objekt zurück.",
-              `Ungültige Ausgabe:\n${output}`
-            ].join("\n\n")
+      let finalOutput: string
+      if (docType.id === "station-learning" || docType.id === "self-study-workbook") {
+        const generateParts = docType.id === "station-learning" ? generateStationLearning : generateSelfStudyWorkbook
+        const document = await generateParts({
+          topic: pending.topic.label,
+          description: pending.topic.description,
+          focus: pending.topic.focus,
+          grade: Number(pending.grade),
+          subject: subjectTitle,
+          temperature: pending.temperature ?? DEFAULT_TEMPERATURE,
+          // Cloud reasoning models may spend part of this budget before emitting visible text.
+          maxTokens: usedProvider === "openrouter" ? 8192 : 2048,
+          signal: controller.signal,
+          onProgress: output =>
+            setQueue(prev =>
+              prev.map(item => (item.id === pending.id && item.status === "running" ? { ...item, output } : item))
+            ),
+          generate: async request => {
+            const response =
+              usedProvider === "openrouter"
+                ? await generateWithOpenRouter({
+                    ...request,
+                    token: openRouterToken,
+                    model: usedModelId!,
+                    signal: controller.signal
+                  })
+                : await generate(request)
+            if ("costEuroCents" in response) totalCostEuroCents += response.costEuroCents
+            if ("model" in response) usedModelId = response.model
+            return response
           }
+        })
+        finalOutput = generatedDocumentToMarkdown(document)
+      } else {
+        const messages = [
+          { role: "system" as const, content: systemPrompt },
+          { role: "user" as const, content: userPrompt }
         ]
-        const repair =
+        const usedTemperature = pending.temperature ?? DEFAULT_TEMPERATURE
+        const response =
           usedProvider === "openrouter"
             ? await generateWithOpenRouter({
                 token: openRouterToken,
                 model: usedModelId!,
-                messages: repairMessages,
-                temperature: 0
+                messages,
+                temperature: usedTemperature,
+                maxTokens,
+                onChunk: (chunk: string) => {
+                  setQueue(prev =>
+                    prev.map(item =>
+                      item.id === pending.id && item.status === "running"
+                        ? { ...item, output: item.output + chunk }
+                        : item
+                    )
+                  )
+                }
               })
-            : await generate({ messages: repairMessages, temperature: 0 })
-        if ("costEuroCents" in repair) totalCostEuroCents += repair.costEuroCents
-        parsed = parseGeneratedDocument(repair.text.trim(), expectedDocument)
-      }
+            : await generate({
+                messages,
+                temperature: usedTemperature,
+                maxTokens,
+                onChunk: (chunk: string) => {
+                  setQueue(prev =>
+                    prev.map(item =>
+                      item.id === pending.id && item.status === "running"
+                        ? { ...item, output: item.output + chunk }
+                        : item
+                    )
+                  )
+                }
+              })
+        if ("costEuroCents" in response) totalCostEuroCents += response.costEuroCents
+        if ("model" in response) usedModelId = response.model
 
-      if (!parsed.document) {
-        throw new Error(`Die strukturierte Ausgabe ist auch nach der Reparatur ungültig: ${parsed.errors.join(" ")}`)
-      }
+        const output = response.text.trim()
+        const expectedDocument = { docType: docType.id, grade: Number(pending.grade), subject: subjectTitle }
+        let parsed = parseGeneratedDocument(output, expectedDocument)
 
-      const finalOutput = generatedDocumentToMarkdown(parsed.document)
+        if (response.truncated || !parsed.document) {
+          const repairMessages = [
+            { role: "system" as const, content: systemPrompt },
+            {
+              role: "user" as const,
+              content: [
+                response.truncated
+                  ? "Die vorherige Ausgabe wurde wegen des Tokenlimits abgeschnitten. Erstelle das vollständige Dokument neu."
+                  : "Repariere die folgende ungültige Ausgabe.",
+                ...(parsed.errors.length ? [`Validierungsfehler:\n- ${parsed.errors.join("\n- ")}`] : []),
+                "Halte alle ursprünglichen Anforderungen vollständig ein. Ergänze oder entferne keine Inhalte allein, um die JSON-Struktur zu reparieren.",
+                `Ursprüngliche Anforderungen:\n${userPrompt}`,
+                `Verwende exakt dieses JSON-Schema:\n${GENERATED_DOCUMENT_SCHEMA}`,
+                "Gib ausschließlich das vollständige, korrigierte JSON-Objekt zurück.",
+                !response.truncated && `Ungültige Ausgabe:\n${output}`
+              ]
+                .filter(Boolean)
+                .join("\n\n")
+            }
+          ]
+          const repair =
+            usedProvider === "openrouter"
+              ? await generateWithOpenRouter({
+                  token: openRouterToken,
+                  model: usedModelId!,
+                  messages: repairMessages,
+                  temperature: 0,
+                  maxTokens
+                })
+              : await generate({ messages: repairMessages, temperature: 0, maxTokens })
+          if ("costEuroCents" in repair) totalCostEuroCents += repair.costEuroCents
+          if (repair.truncated) {
+            throw new Error(
+              `Die Reparatur wurde nach ${maxTokens ?? 2048} Tokens abgeschnitten. Bitte erstelle ein kürzeres Material oder teile das Thema auf.`
+            )
+          }
+          parsed = parseGeneratedDocument(repair.text.trim(), expectedDocument)
+        }
+
+        if (!parsed.document) {
+          throw new Error(`Die strukturierte Ausgabe ist auch nach der Reparatur ungültig: ${parsed.errors.join(" ")}`)
+        }
+
+        finalOutput = generatedDocumentToMarkdown(parsed.document)
+      }
+      controller.signal.throwIfAborted()
 
       // Save to results storage if successful
       if (finalOutput && !finalOutput.startsWith("⚠️") && usedModelId) {
@@ -617,12 +669,14 @@ function PageContent() {
         )
       )
     } catch (err) {
+      if (controller.signal.aborted) return
       const message =
         err instanceof Error ? err.message : typeof err === "string" ? err : "Unbekannter Fehler bei der Generierung."
       setQueue(prev =>
         prev.map(item => (item.id === pending.id ? { ...item, status: "error" as const, error: message } : item))
       )
     } finally {
+      activeJob.current = null
       if (usedProvider === "openrouter") {
         setOpenRouterGenerating(false)
         setOpenRouterUsageRefresh(value => value + 1)
@@ -647,6 +701,7 @@ function PageContent() {
   const handleCancel = useCallback(
     async (itemId: string) => {
       const item = queue.find(q => q.id === itemId)
+      if (activeJob.current?.id === itemId) activeJob.current.controller.abort()
       if (item?.status === "running") {
         await cancel()
       }

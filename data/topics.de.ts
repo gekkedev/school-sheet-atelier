@@ -45,7 +45,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       grades: ["1", "2"],
       description:
         "Silben klatschen, Silbenbögen setzen und Wörter zerlegen, um sichere Lesestarterinnen und Lesestarter zu fördern.",
-      focus: ["Phonologische Bewusstheit", "Lesestart", "Differenzierung"],
+      focus: ["Phonologische Bewusstheit", "Lesestart", "Differenzierung"]
     },
     {
       id: "anlaut-detektive",
@@ -53,7 +53,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "lautbewusstsein",
       grades: ["1"],
       description: "Anlaute hören, Bildern zuordnen und Grossbuchstaben sicher schreiben.",
-      focus: ["Hören und Sprechen", "Bildimpulse", "Feinmotorik"],
+      focus: ["Hören und Sprechen", "Bildimpulse", "Feinmotorik"]
     },
     {
       id: "lauttreue-Wörter",
@@ -61,7 +61,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "lautbewusstsein",
       grades: ["1", "2"],
       description: "Wörter lautgetreu schreiben, Silbenmodelle nutzen und erste Rechtschreibstrategien entwickeln.",
-      focus: ["Schriftspracherwerb", "Selbstkontrolle", "Bildunterstützung"],
+      focus: ["Schriftspracherwerb", "Selbstkontrolle", "Bildunterstützung"]
     },
     {
       id: "wortarten",
@@ -69,7 +69,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["2", "3", "4"],
       description: "Wörter sortieren, Satzbausteine markieren und Wortarten sicher anwenden.",
-      focus: ["Grammatikfundament", "Markierungsaufgaben", "Begriffssicherung"],
+      focus: ["Grammatikfundament", "Markierungsaufgaben", "Begriffssicherung"]
     },
     {
       id: "gross-klein",
@@ -77,7 +77,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["2", "3", "4"],
       description: "Regeln wiederholen, knifflige Beispielsatzpaare analysieren und Rechtschreibstrategien anwenden.",
-      focus: ["Regelwissen", "Fehleranalyse", "Trainingstexte"],
+      focus: ["Regelwissen", "Fehleranalyse", "Trainingstexte"]
     },
     {
       id: "zeichensetzung",
@@ -86,7 +86,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       grades: ["2", "3", "4"],
       description:
         "Satzschlusszeichen und wörtliche Rede gezielt üben, Satzmelodie reflektieren und Fehler verbessern.",
-      focus: ["Satzbau", "Dialoge", "Selbstkorrektur"],
+      focus: ["Satzbau", "Dialoge", "Selbstkorrektur"]
     },
     {
       id: "zeitformen",
@@ -94,7 +94,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["3", "4"],
       description: "Zeitformen erkennen, konjugieren und in Texten sicher umsetzen.",
-      focus: ["Tempustraining", "Vergleichstabellen", "Transfer"],
+      focus: ["Tempustraining", "Vergleichstabellen", "Transfer"]
     },
     {
       id: "satzarten",
@@ -102,7 +102,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["2", "3", "4"],
       description: "Aussage-, Frage- und Ausrufesätze unterscheiden und Satzglieder flexibel anordnen.",
-      focus: ["Satzgeflecht", "Spielerische Vertiefung", "Satzbauplakate"],
+      focus: ["Satzgeflecht", "Spielerische Vertiefung", "Satzbauplakate"]
     },
     {
       id: "kommasetzung",
@@ -110,7 +110,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["3", "4"],
       description: "Kommas setzen, Regeln anwenden und typische Stolperstellen bewusst machen.",
-      focus: ["Regeltraining", "Fehlerkultur", "Reflexion"],
+      focus: ["Regeltraining", "Fehlerkultur", "Reflexion"]
     },
     {
       id: "steigerung-adjektive",
@@ -118,7 +118,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["2", "3", "4"],
       description: "Adjektive entdecken, steigern und wirkungsvoll in Texten einsetzen.",
-      focus: ["Sprache verfeinern", "Synonyme", "Satzbau"],
+      focus: ["Sprache verfeinern", "Synonyme", "Satzbau"]
     },
     {
       id: "zusammengesetzte-nomen",
@@ -126,7 +126,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["2", "3", "4"],
       description: "Komposita bilden, Trennstriche einsetzen und Bedeutungen entschlüsseln.",
-      focus: ["Wortbausteine", "Wortschatzerweiterung", "Lesestrategie"],
+      focus: ["Wortbausteine", "Wortschatzerweiterung", "Lesestrategie"]
     },
     {
       id: "pronomen",
@@ -134,7 +134,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["3", "4"],
       description: "Pronomen erkennen, ersetzen und bewusst in eigenen Texten nutzen.",
-      focus: ["Textverständnis", "Kohäsion", "Fehleranalyse"],
+      focus: ["Textverständnis", "Kohäsion", "Fehleranalyse"]
     },
     {
       id: "rechtschreibstrategien",
@@ -142,7 +142,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "grammatik",
       grades: ["2", "3", "4"],
       description: "Merkworter, Regelwörter, Stammprinzip und Mitsprechworte differenziert trainieren.",
-      focus: ["Strategiemix", "Selbstreflexion", "Lerntipps"],
+      focus: ["Strategiemix", "Selbstreflexion", "Lerntipps"]
     },
     {
       id: "leseverstehen",
@@ -150,7 +150,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "lesen",
       grades: ["2", "3", "4"],
       description: "Texte erschliessen, Leitfragen beantworten und Lesestrategien anwenden.",
-      focus: ["Lesestrategien", "Frageformen", "Binnendifferenzierung"],
+      focus: ["Lesestrategien", "Frageformen", "Binnendifferenzierung"]
     },
     {
       id: "lesestrategien",
@@ -158,7 +158,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "lesen",
       grades: ["3", "4"],
       description: "Markieren, visualisieren und Fragen stellen als Lesewerkzeuge bewusst einüben.",
-      focus: ["Metakognition", "Lesetritts", "Symbolkarten"],
+      focus: ["Metakognition", "Lesetritts", "Symbolkarten"]
     },
     {
       id: "bildgeschichten",
@@ -166,7 +166,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "lesen",
       grades: ["1", "2", "3"],
       description: "Bilder lesen, Reihenfolgen ordnen und Texte zu Bildgeschichten gestalten.",
-      focus: ["Bildimpulse", "Erzählgrammatik", "Erzähldecke"],
+      focus: ["Bildimpulse", "Erzählgrammatik", "Erzähldecke"]
     },
     {
       id: "sachtexte",
@@ -174,7 +174,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "lesen",
       grades: ["3", "4"],
       description: "Informationen markieren, Schaubilder nutzen und Inhalte präzise wiedergeben.",
-      focus: ["Informationsentnahme", "Notiztechnik", "Visualisierung"],
+      focus: ["Informationsentnahme", "Notiztechnik", "Visualisierung"]
     },
     {
       id: "gedichte",
@@ -182,7 +182,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "lesen",
       grades: ["2", "3", "4"],
       description: "Reime finden, Rhythmus erfassen und kreative Nachdichtungen verfassen.",
-      focus: ["Sprachrhythmus", "Vortrag", "Kreatives Schreiben"],
+      focus: ["Sprachrhythmus", "Vortrag", "Kreatives Schreiben"]
     },
     {
       id: "texte-verfassen",
@@ -190,7 +190,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "schreiben",
       grades: ["3", "4"],
       description: "Textsortenmerkmale kennen, Schreibplan nutzen und Texte strukturieren.",
-      focus: ["Schreibprozess", "Textsortenmerkmale", "Feedback"],
+      focus: ["Schreibprozess", "Textsortenmerkmale", "Feedback"]
     },
     {
       id: "kreatives-schreiben",
@@ -198,7 +198,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "schreiben",
       grades: ["2", "3", "4"],
       description: "Schreibimpulse, Perspektivwechsel und Fantasiegeschichten anregen.",
-      focus: ["Erzählideen", "Bildimpulse", "Sprachbewusstsein"],
+      focus: ["Erzählideen", "Bildimpulse", "Sprachbewusstsein"]
     },
     {
       id: "bericht-schreiben",
@@ -206,7 +206,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "schreiben",
       grades: ["3", "4"],
       description: "Zeitformen korrekt nutzen, W-Fragen beantworten und sachlich formulieren.",
-      focus: ["Sachsprache", "Strukturierung", "Rückmeldung"],
+      focus: ["Sachsprache", "Strukturierung", "Rückmeldung"]
     },
     {
       id: "briefe-schreiben",
@@ -214,7 +214,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "schreiben",
       grades: ["2", "3", "4"],
       description: "Anrede, Aufbau, Höflichkeit und digitale Kommunikation reflektieren.",
-      focus: ["Medienkompetenz", "Soziale Aspekte", "Formales"],
+      focus: ["Medienkompetenz", "Soziale Aspekte", "Formales"]
     },
     {
       id: "Textüberarbeitung",
@@ -222,7 +222,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "schreiben",
       grades: ["2", "3", "4"],
       description: "Checklisten nutzen, Feedback geben und Texte zielgerichtet verbessern.",
-      focus: ["Peer Feedback", "Schreibprozess", "Sprachbewusstsein"],
+      focus: ["Peer Feedback", "Schreibprozess", "Sprachbewusstsein"]
     },
     {
       id: "wortschatz-expedition",
@@ -230,7 +230,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "wortschatz",
       grades: ["2", "3", "4"],
       description: "Synonyme sammeln, Wortfelder erweitern und treffende Wörter wählen.",
-      focus: ["Sprachschatz", "Kommunikation", "Kreativer Austausch"],
+      focus: ["Sprachschatz", "Kommunikation", "Kreativer Austausch"]
     },
     {
       id: "synonyme-antonyme",
@@ -238,7 +238,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "wortschatz",
       grades: ["3", "4"],
       description: "Bedeutungsnuancen vergleichen, Gegenteile finden und passende Wörter einsetzen.",
-      focus: ["Bedeutungsfelder", "Präzise Sprache", "Differenzierung"],
+      focus: ["Bedeutungsfelder", "Präzise Sprache", "Differenzierung"]
     },
     {
       id: "redensarten",
@@ -246,7 +246,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "wortschatz",
       grades: ["3", "4"],
       description: "Bedeutungen erklären, Herkunft erforschen und Redewendungen kreativ nutzen.",
-      focus: ["Sprachkultur", "Recherche", "Darstellendes Spiel"],
+      focus: ["Sprachkultur", "Recherche", "Darstellendes Spiel"]
     },
     {
       id: "sprachdetektive",
@@ -254,7 +254,7 @@ export const DEUTSCH_SUBJECT: Subject = {
       category: "wortschatz",
       grades: ["2", "3", "4"],
       description: "Sprachliche Besonderheiten im Alltag entdecken, dokumentieren und diskutieren.",
-      focus: ["Alltagssprache", "Projektarbeit", "Dokumentation"],
+      focus: ["Alltagssprache", "Projektarbeit", "Dokumentation"]
     }
   ]
 }

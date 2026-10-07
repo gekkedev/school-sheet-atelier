@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { checkStationLearning } from "./check-station-learning"
+import { checkSelfStudyWorkbook } from "./check-self-study-workbook"
 import { getDocumentType } from "../data/document-types"
 import { generatedDocumentToMarkdown, parseGeneratedDocument } from "../lib/generated-document"
 import {
@@ -79,16 +81,27 @@ const stream = new ReadableStream<Uint8Array>({
     const encoder = new TextEncoder()
     controller.enqueue(encoder.encode('data: {"model":"example/text","choices":[{"delta":{"content":"Hal"}}]}\n\n'))
     controller.enqueue(
-      encoder.encode(
-        'data: {"choices":[{"delta":{"content":"lo"}}],"usage":{"cost":0.01}}\n\ndata: [DONE]\n\n'
-      )
+      encoder.encode('data: {"choices":[{"delta":{"content":"lo"}}],"usage":{"cost":0.01}}\n\ndata: [DONE]\n\n')
     )
     controller.close()
   }
 })
 const streamCheck = readOpenRouterStream(stream, chunk => streamChunks.push(chunk)).then(result => {
-  assert.deepEqual(result, { text: "Hallo", cost: 0.01, model: "example/text" })
+  assert.deepEqual(result, { text: "Hallo", cost: 0.01, model: "example/text", truncated: false })
   assert.deepEqual(streamChunks, ["Hal", "lo"])
+})
+const truncatedStream = new ReadableStream<Uint8Array>({
+  start(controller) {
+    controller.enqueue(
+      new TextEncoder().encode(
+        'data: {"choices":[{"delta":{"content":"{"},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n'
+      )
+    )
+    controller.close()
+  }
+})
+const truncationCheck = readOpenRouterStream(truncatedStream, () => {}).then(result => {
+  assert.equal(result.truncated, true)
 })
 assert.equal(estimateEuroCentsPerPage(free), 0)
 assert.ok(Math.abs(estimateEuroCentsPerPage(paid) - 0.23) < 1e-10)
@@ -115,7 +128,7 @@ assert.deepEqual(
   ranked.map(model => model.id),
   ["anthropic/claude-future-opus", "google/gemini-future-pro", "google/gemma-4", "google/gemma-2", "unknown/api-best"]
 )
-streamCheck.then(
+Promise.all([streamCheck, truncationCheck, checkStationLearning(), checkSelfStudyWorkbook()]).then(
   () => console.log("openrouter checks passed"),
   error => {
     console.error(error)

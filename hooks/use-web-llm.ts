@@ -37,6 +37,13 @@ type GenerateOptions = {
 type GenerateResult = {
   text: string
   raw: unknown
+  truncated: boolean
+}
+
+function stoppedAtTokenLimit(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false
+  const choice = (value as { choices?: Array<{ finish_reason?: unknown }> }).choices?.[0]
+  return choice?.finish_reason === "length"
 }
 
 function extractText(result: unknown): string {
@@ -331,8 +338,10 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
 
           let fullText = ""
           let chunkCount = 0
+          let truncated = false
           for await (const chunk of asyncChunkGenerator) {
             const content = chunk.choices?.[0]?.delta?.content
+            truncated ||= stoppedAtTokenLimit(chunk)
             if (content) {
               fullText += content
               onChunk(content)
@@ -344,7 +353,8 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
 
           return {
             text: fullText,
-            raw: null
+            raw: null,
+            truncated
           }
         } else {
           // Non-stream mode
@@ -354,7 +364,8 @@ export function useWebLLM(defaultModelId: string = DEFAULT_MODEL_ID) {
 
           return {
             text: extractText(result),
-            raw: result
+            raw: result,
+            truncated: stoppedAtTokenLimit(result)
           }
         }
       } finally {
