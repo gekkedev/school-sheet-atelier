@@ -35,6 +35,19 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
     textAlign: "justify"
   },
+  choice: {
+    flexDirection: "row",
+    marginBottom: 8,
+    lineHeight: 1.5
+  },
+  checkbox: {
+    width: 10,
+    height: 10,
+    marginTop: 3,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: "#000000"
+  },
   listItem: {
     marginLeft: 20,
     marginBottom: 4,
@@ -180,6 +193,12 @@ function renderTextSegments(segments: TextSegment[]) {
   })
 }
 
+function checkboxChoiceSegments(segments: TextSegment[]): TextSegment[] | null {
+  const first = segments[0]
+  const match = first?.text.match(/^\[ \]\s+/)
+  return match ? [{ ...first, text: first.text.slice(match[0].length) }, ...segments.slice(1)] : null
+}
+
 interface PDFDocumentProps {
   content: string
   title: string
@@ -219,6 +238,15 @@ export function PDFDocumentContent({ content, title }: PDFDocumentProps) {
                 </View>
               )
             case "paragraph":
+              const choiceSegments = checkboxChoiceSegments(element.segments)
+              if (choiceSegments) {
+                return (
+                  <View key={index} style={styles.choice}>
+                    <View style={styles.checkbox} />
+                    <Text style={{ flex: 1 }}>{renderTextSegments(choiceSegments)}</Text>
+                  </View>
+                )
+              }
               return (
                 <Text key={index} style={styles.paragraph}>
                   {renderTextSegments(element.segments)}

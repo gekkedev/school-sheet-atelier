@@ -83,7 +83,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
     taskInstructions: [
       "1. Titel und kurze Einleitung",
       "2. 8-12 Multiple-Choice-Fragen zum Thema",
-      "3. Pro Frage genau 4 Antwortmöglichkeiten (a, b, c, d)",
+      "3. Pro Frage genau 4 Antwortmöglichkeiten im Feld options, nur die Antworttexte ohne a), b), c) oder d) davor",
       "3a. Jede Antwortmöglichkeit ist kurz, eindeutig und steht im Feld options (nicht im Fragetext)",
       "4. Nur eine Antwort ist korrekt",
       "5. Die falschen Antworten (Distraktoren) sollten plausibel klingen",

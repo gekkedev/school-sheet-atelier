@@ -119,7 +119,8 @@ export function generatedDocumentToMarkdown(document: GeneratedDocument): string
       lines.push("", `## Aufgabe ${taskNumber}`, "", item.prompt)
       if (item.options?.length) {
         for (const [optionIndex, option] of item.options.entries()) {
-          lines.push("", `□ ${String.fromCharCode(97 + optionIndex)}) ${option}`)
+          const optionText = option.replace(/^\s*(?:\([a-z]\)|[a-z]\s*[).:-])\s*/i, "")
+          lines.push("", `[ ] ${String.fromCharCode(97 + optionIndex)}) ${optionText}`)
         }
       }
     }

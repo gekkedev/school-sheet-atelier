@@ -40,13 +40,13 @@ assert.match(
             id: "task-1",
             type: "multiple-choice",
             prompt: "Was stimmt?",
-            options: ["Antwort eins", "Antwort zwei"]
+            options: ["a) Antwort eins", "B) Antwort zwei"]
           }
         ]
       }
     ]
   }),
-  /Was stimmt\?\n\n□ a\) Antwort eins\n\n□ b\) Antwort zwei/
+  /Was stimmt\?\n\n\[ \] a\) Antwort eins\n\n\[ \] b\) Antwort zwei/
 )
 assert.deepEqual(parseGeneratedDocument(raw.replace('"task-1":"ging"', '"other":"ging"'), expected).errors, [
   "solutions must contain exactly one entry for every task id."
