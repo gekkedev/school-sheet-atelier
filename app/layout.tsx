@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SchoolSheet-Atelier",
   description:
-    "SchoolSheet-Atelier generates elementary school German and Religion exams, worksheets, and printable handouts entirely in the browser. Runs locally on a regular laptop.",
+    "Das Unterrichtsatelier für Deutsch und Religion: Themen entdecken und Lernmaterialien für die Klassen 1–4 erstellen.",
   manifest: `${basePath}/manifest.webmanifest`
 }
 

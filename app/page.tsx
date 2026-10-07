@@ -727,12 +727,11 @@ function PageContent() {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between xl:gap-6">
             <div className="min-w-0 flex flex-col gap-2">
               <h1 className="text-2xl font-semibold tracking-tight text-ink lg:text-3xl">
-                Kuratiertes Themenarchiv für Deutsch und Religion
+                Das Unterrichtsatelier für Deutsch &amp; Religion
               </h1>
               <p className="max-w-5xl text-base text-muted">
-                Wähle ein Fach, filtere nach Klassenstufe und erhalte inspirierende Themenbausteine für Arbeitsblätter,
-                Projekte oder Unterrichtsreihen. Alle Inhalte sind auf die Klassen 1-4 zugeschnitten und lassen sich
-                direkt mit dem Generator kombinieren.
+                Entdecke Themen, entwickle passende Lernmaterialien und erstelle daraus Arbeitsblätter, Projekte oder
+                Unterrichtsreihen für die Klassen 1–4.
               </p>
             </div>
             <label className="flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink">
@@ -762,7 +761,7 @@ function PageContent() {
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5">
               <span className="h-2 w-2 rounded-full bg-muted" />
-              Gesamtbibliothek: {allTopics.length} Themen in {activeSubject.categories.length} Clustern
+              Themenvorschläge: {allTopics.length} Themen in {activeSubject.categories.length} Clustern
             </span>
           </div>
         </header>
@@ -832,7 +831,7 @@ function PageContent() {
 
         <section className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-4 shadow-sm shadow-ink/10 lg:p-5">
           <div className="flex flex-col gap-1 border-b border-line pb-3">
-            <span className="text-sm font-semibold uppercase tracking-wide text-accent">Generator</span>
+            <span className="text-sm font-semibold uppercase tracking-wide text-accent">Materialwerkstatt</span>
             <h2 className="text-xl font-semibold text-ink">Entwurf aus einem Thema starten</h2>
           </div>
 
@@ -997,16 +996,16 @@ function PageContent() {
             {queue.length === 0 && (
               <p>
                 Wähle Fach, Klasse und Dokumenttyp. Gib ein eigenes Thema ein und klicke auf{" "}
-                <span className="font-semibold">„Entwurf erstellen"</span> oder nutze ein Thema aus der Bibliothek
-                unten. Das Modell erstellt ein vollständiges {getDocumentType(selectedDocumentType).label} mit Aufgaben
-                und Lösungen.
+                <span className="font-semibold">„Entwurf erstellen"</span> oder nutze einen Themenvorschlag unten. Das
+                Modell erstellt ein vollständiges {getDocumentType(selectedDocumentType).label} mit Aufgaben und
+                Lösungen.
               </p>
             )}
             {queue.length > 0 && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-                    Warteschlange: {queue.filter(q => q.status === "pending" || q.status === "running").length} aktiv,{" "}
+                    Entwürfe: {queue.filter(q => q.status === "pending" || q.status === "running").length} aktiv,{" "}
                     {queue.filter(q => q.status === "success").length} abgeschlossen
                   </span>
                 </div>
@@ -1043,7 +1042,10 @@ function PageContent() {
             ))}
         </section>
 
-        <section className="flex flex-col gap-6">
+        <section className="flex flex-col gap-6" aria-labelledby="topic-suggestions-heading">
+          <h2 id="topic-suggestions-heading" className="text-xl font-semibold text-ink">
+            Themenvorschläge
+          </h2>
           {activeSubject.categories.map(category => {
             const topicsInCategory = activeSubject.topics.filter(topic => {
               if (topic.category !== category.id) {
@@ -1144,8 +1146,8 @@ function PageContent() {
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted">
               SchoolSheet-Atelier unterstützt Lehrkräfte bei der Vorbereitung von Deutsch- und Religionsunterricht in
-              den Klassen 1 bis 4. Das Themenarchiv verbindet kuratierte Unterrichtsideen mit einem flexiblen
-              Arbeitsblatt-Generator: Wähle ein Fach, eine Klassenstufe und ein Thema oder formuliere deinen eigenen
+              den Klassen 1 bis 4. Das Unterrichtsatelier verbindet Themenvorschläge mit einer flexiblen
+              Materialwerkstatt: Wähle ein Fach, eine Klassenstufe und ein Thema oder formuliere deinen eigenen
               Unterrichtsimpuls.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-muted">

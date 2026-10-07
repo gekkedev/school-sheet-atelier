@@ -5,7 +5,7 @@ export const DEUTSCH_SUBJECT: Subject = {
   title: "Deutsch",
   tagline: "Sprache entdecken und sicher anwenden",
   description:
-    "Kuratiertes Archiv für differenzierte Deutschthemen der Klassen 1-4, abgestimmt auf Lehrpläne und praxisnahe Unterrichtsplanung.",
+    "Praxisnahe Themenvorschläge für differenzierten Deutschunterricht in den Klassen 1-4, abgestimmt auf Lehrpläne und Unterrichtsplanung.",
   grades: ["1", "2", "3", "4"],
   categories: [
     {
