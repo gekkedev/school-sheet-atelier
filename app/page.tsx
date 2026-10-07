@@ -43,10 +43,12 @@ type StoredResult = {
   timestamp: number
   topic: Topic
   grade: Grade
-  modelId: string
+  modelId: string | null
   provider?: AiProvider
   totalCostEuroCents?: number
   output: string
+  status: "success" | "error"
+  error?: string | null
   subjectId: SubjectId
   documentType?: string
 }
@@ -57,6 +59,13 @@ const UI_THEME_KEY = "school-sheet-theme"
 
 function cx(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ")
+}
+
+function formatCreationDate(timestamp: number | undefined): string | null {
+  if (!timestamp || !Number.isFinite(timestamp)) return null
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return null
+  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(date)
 }
 
 interface QueueItemProps {
@@ -85,6 +94,7 @@ const QueueItem = memo(function QueueItem({
   onDownloadDOCX
 }: QueueItemProps) {
   const hasContent = item.output || (item.status === "error" && item.error)
+  const creationDate = formatCreationDate(item.timestamp)
 
   return (
     <div className="rounded-2xl border border-line bg-surface px-6 py-4">
@@ -128,6 +138,7 @@ const QueueItem = memo(function QueueItem({
           {item.documentType && (
             <span className="text-xs text-muted">Typ: {getDocumentType(item.documentType).label}</span>
           )}
+          {creationDate && <span className="text-xs text-muted">Erstellt: {creationDate}</span>}
           {item.modelId && (
             <span className="text-xs text-muted">
               Modell:{" "}
@@ -143,7 +154,9 @@ const QueueItem = memo(function QueueItem({
             </span>
           )}
           {item.totalCostEuroCents !== undefined && (
-            <span className="text-xs text-muted">Kosten: {formatEuroCents(item.totalCostEuroCents)}</span>
+            <span className="text-xs text-muted">
+              {item.status === "running" ? "Kosten bisher" : "Kosten"}: {formatEuroCents(item.totalCostEuroCents)}
+            </span>
           )}
         </button>
         <div className="flex items-center gap-3">
@@ -460,6 +473,16 @@ function PageContent() {
 
     const usedProvider = pending.provider ?? "local"
     let usedModelId = usedProvider === "openrouter" ? pending.modelId : (getCurrentModelId() ?? activeModelId ?? null)
+    // A browser reload can resume an interrupted draft; retain costs from calls already completed.
+    let totalCostEuroCents: number | undefined =
+      usedProvider === "openrouter" ? (pending.totalCostEuroCents ?? 0) : undefined
+    let latestOutput = pending.output
+
+    const addCost = (response: { costEuroCents?: number }) => {
+      if (response.costEuroCents === undefined) return
+      totalCostEuroCents = (totalCostEuroCents ?? 0) + response.costEuroCents
+      setQueue(prev => prev.map(item => (item.id === pending.id ? { ...item, totalCostEuroCents } : item)))
+    }
 
     setQueue(prev =>
       prev.map(item => (item.id === pending.id ? { ...item, status: "running" as const, modelId: usedModelId } : item))
@@ -512,7 +535,6 @@ function PageContent() {
         .filter(Boolean)
         .join("\n\n")
 
-      let totalCostEuroCents = 0
       let finalOutput: string
       if (docType.id === "station-learning" || docType.id === "self-study-workbook") {
         const generateParts = docType.id === "station-learning" ? generateStationLearning : generateSelfStudyWorkbook
@@ -526,10 +548,12 @@ function PageContent() {
           // Cloud reasoning models may spend part of this budget before emitting visible text.
           maxTokens: usedProvider === "openrouter" ? 8192 : 2048,
           signal: controller.signal,
-          onProgress: output =>
+          onProgress: output => {
+            latestOutput = output
             setQueue(prev =>
               prev.map(item => (item.id === pending.id && item.status === "running" ? { ...item, output } : item))
-            ),
+            )
+          },
           generate: async request => {
             const response =
               usedProvider === "openrouter"
@@ -540,7 +564,7 @@ function PageContent() {
                     signal: controller.signal
                   })
                 : await generate(request)
-            if ("costEuroCents" in response) totalCostEuroCents += response.costEuroCents
+            if ("costEuroCents" in response) addCost(response)
             if ("model" in response) usedModelId = response.model
             return response
           }
@@ -561,6 +585,7 @@ function PageContent() {
                 temperature: usedTemperature,
                 maxTokens,
                 onChunk: (chunk: string) => {
+                  latestOutput += chunk
                   setQueue(prev =>
                     prev.map(item =>
                       item.id === pending.id && item.status === "running"
@@ -575,6 +600,7 @@ function PageContent() {
                 temperature: usedTemperature,
                 maxTokens,
                 onChunk: (chunk: string) => {
+                  latestOutput += chunk
                   setQueue(prev =>
                     prev.map(item =>
                       item.id === pending.id && item.status === "running"
@@ -584,7 +610,7 @@ function PageContent() {
                   )
                 }
               })
-        if ("costEuroCents" in response) totalCostEuroCents += response.costEuroCents
+        if ("costEuroCents" in response) addCost(response)
         if ("model" in response) usedModelId = response.model
 
         const output = response.text.trim()
@@ -621,7 +647,8 @@ function PageContent() {
                   maxTokens
                 })
               : await generate({ messages: repairMessages, temperature: 0, maxTokens })
-          if ("costEuroCents" in repair) totalCostEuroCents += repair.costEuroCents
+          latestOutput = repair.text.trim()
+          if ("costEuroCents" in repair) addCost(repair)
           if (repair.truncated) {
             throw new Error(
               `Die Reparatur wurde nach ${maxTokens ?? 2048} Tokens abgeschnitten. Bitte erstelle ein kürzeres Material oder teile das Thema auf.`
@@ -637,9 +664,10 @@ function PageContent() {
         finalOutput = generatedDocumentToMarkdown(parsed.document)
       }
       controller.signal.throwIfAborted()
+      latestOutput = finalOutput
 
       // Save to results storage if successful
-      if (finalOutput && !finalOutput.startsWith("⚠️") && usedModelId) {
+      if (finalOutput && !finalOutput.startsWith("⚠️")) {
         saveResultToStorage({
           id: pending.id,
           timestamp: pending.timestamp,
@@ -649,6 +677,7 @@ function PageContent() {
           provider: usedProvider,
           totalCostEuroCents,
           output: finalOutput,
+          status: "success",
           subjectId: pending.subjectId,
           documentType: pending.documentType
         })
@@ -672,8 +701,34 @@ function PageContent() {
       if (controller.signal.aborted) return
       const message =
         err instanceof Error ? err.message : typeof err === "string" ? err : "Unbekannter Fehler bei der Generierung."
+      saveResultToStorage({
+        id: pending.id,
+        timestamp: pending.timestamp,
+        topic: pending.topic,
+        grade: pending.grade,
+        modelId: usedModelId,
+        provider: usedProvider,
+        totalCostEuroCents,
+        output: latestOutput,
+        status: "error",
+        error: message,
+        subjectId: pending.subjectId,
+        documentType: pending.documentType
+      })
       setQueue(prev =>
-        prev.map(item => (item.id === pending.id ? { ...item, status: "error" as const, error: message } : item))
+        prev.map(item =>
+          item.id === pending.id
+            ? {
+                ...item,
+                status: "error" as const,
+                error: message,
+                output: latestOutput,
+                modelId: usedModelId,
+                provider: usedProvider,
+                totalCostEuroCents
+              }
+            : item
+        )
       )
     } finally {
       activeJob.current = null
