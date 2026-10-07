@@ -51,6 +51,7 @@ type StoredResult = {
 
 const STORAGE_KEY = "school-sheet-results"
 const QUEUE_STORAGE_KEY = "school-sheet-queue"
+const UI_THEME_KEY = "school-sheet-theme"
 
 function cx(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ")
@@ -84,7 +85,7 @@ const QueueItem = memo(function QueueItem({
   const hasContent = item.output || (item.status === "error" && item.error)
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4">
+    <div className="rounded-2xl border border-line bg-surface px-6 py-4">
       <div className="mb-3 flex items-center justify-between">
         <button
           type="button"
@@ -96,10 +97,10 @@ const QueueItem = memo(function QueueItem({
               <span
                 role="status"
                 aria-label="Wird erstellt"
-                className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600"
+                className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-accent"
               />
             )}
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
               {item.status === "pending" && "Wartend"}
               {item.status === "running" && "Live-Vorschau"}
               {item.status === "success" && "Ergebnis"}
@@ -109,7 +110,7 @@ const QueueItem = memo(function QueueItem({
             {hasContent && (
               <>
                 <svg
-                  className={cx("h-4 w-4 text-slate-400 transition-transform", isExpanded ? "rotate-180" : "rotate-0")}
+                  className={cx("h-4 w-4 text-muted transition-transform", isExpanded ? "rotate-180" : "rotate-0")}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -119,28 +120,28 @@ const QueueItem = memo(function QueueItem({
               </>
             )}
           </div>
-          <span className="font-semibold text-slate-800">
+          <span className="font-semibold text-ink">
             {item.documentType && getDocumentType(item.documentType).icon} {item.topic.label} · Klasse {item.grade}
           </span>
           {item.documentType && (
-            <span className="text-xs text-slate-500">Typ: {getDocumentType(item.documentType).label}</span>
+            <span className="text-xs text-muted">Typ: {getDocumentType(item.documentType).label}</span>
           )}
           {item.modelId && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted">
               Modell:{" "}
               <span
                 onClick={e => {
                   e.stopPropagation()
                   onModelClick(item.modelId!, item.provider ?? "local")
                 }}
-                className="cursor-pointer hover:text-slate-700 hover:underline"
+                className="cursor-pointer hover:text-ink-soft hover:underline"
               >
                 {MODEL_LABELS[item.modelId] ?? item.modelId}
               </span>
             </span>
           )}
           {item.totalCostEuroCents !== undefined && (
-            <span className="text-xs text-slate-500">Kosten: {formatEuroCents(item.totalCostEuroCents)}</span>
+            <span className="text-xs text-muted">Kosten: {formatEuroCents(item.totalCostEuroCents)}</span>
           )}
         </button>
         <div className="flex items-center gap-3">
@@ -158,7 +159,7 @@ const QueueItem = memo(function QueueItem({
               <button
                 type="button"
                 onClick={onDownloadPDF}
-                className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                className="cursor-pointer text-xs font-medium text-muted hover:text-ink hover:underline"
                 title="Als PDF herunterladen"
               >
                 PDF ↓
@@ -166,7 +167,7 @@ const QueueItem = memo(function QueueItem({
               <button
                 type="button"
                 onClick={onDownloadDOCX}
-                className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                className="cursor-pointer text-xs font-medium text-muted hover:text-ink hover:underline"
                 title="Als DOCX herunterladen (kompatibel mit allen Office-Suiten)"
               >
                 DOCX ↓
@@ -175,7 +176,7 @@ const QueueItem = memo(function QueueItem({
                 type="button"
                 onClick={() => onCopy(item.output)}
                 disabled={copyStatus !== "idle"}
-                className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline disabled:opacity-50"
+                className="cursor-pointer text-xs font-medium text-muted hover:text-ink hover:underline disabled:opacity-50"
               >
                 {copyStatus === "success" ? "✓ Kopiert" : copyStatus === "error" ? "Fehler" : "Kopieren"}
               </button>
@@ -197,9 +198,9 @@ const QueueItem = memo(function QueueItem({
           {item.output && (
             <div className="mt-4">
               {item.status === "running" ? (
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-slate-700">
+                <div className="prose prose-sm max-w-none whitespace-pre-wrap font-sans text-ink-soft">
                   {item.output}
-                  <span className="inline-block h-4 w-1 animate-pulse bg-slate-900" />
+                  <span className="inline-block h-4 w-1 animate-pulse bg-accent" />
                 </div>
               ) : (
                 <PDFPreview content={item.output} title={`${item.topic.label} - Klasse ${item.grade}`} />
@@ -267,25 +268,25 @@ function saveQueueToStorage(queue: GenerationItem[]) {
 function getTheme(subjectId: SubjectId) {
   if (subjectId === "deutsch") {
     return {
-      chipActive: "border-amber-500 bg-amber-500 text-white hover:bg-amber-500",
+      chipActive: "border-amber-500 bg-amber-500 text-on-accent hover:bg-amber-500",
       chipCountInactive: "bg-amber-500/10 text-amber-700",
-      categoryHeading: "text-amber-800",
-      focusChip: "border border-amber-200 bg-amber-50 text-amber-800",
+      categoryHeading: "text-warm-ink",
+      focusChip: "border border-warm-rule bg-warm-chip text-warm-ink",
       badge: "text-amber-600",
       bullet: "bg-amber-500",
-      cardBorder: "border-amber-100",
+      cardBorder: "border-warm-rule bg-warm-panel",
       cardShadow: "shadow-amber-500/10"
     }
   }
 
   return {
-    chipActive: "border-sky-500 bg-sky-500 text-white hover:bg-sky-500",
+    chipActive: "border-sky-500 bg-sky-500 text-on-accent hover:bg-sky-500",
     chipCountInactive: "bg-sky-500/10 text-sky-800",
-    categoryHeading: "text-sky-800",
-    focusChip: "border border-sky-200 bg-sky-50 text-sky-800",
+    categoryHeading: "text-cool-ink",
+    focusChip: "border border-cool-rule bg-cool-chip text-cool-ink",
     badge: "text-sky-600",
     bullet: "bg-sky-500",
-    cardBorder: "border-sky-100",
+    cardBorder: "border-cool-rule bg-cool-panel",
     cardShadow: "shadow-sky-500/10"
   }
 }
@@ -299,6 +300,7 @@ export default function Home() {
 }
 
 function PageContent() {
+  const [uiTheme, setUiTheme] = useState<"blackboard" | "atelier">("blackboard")
   const [activeSubjectId, setActiveSubjectId] = useState<SubjectId>("deutsch")
   const [activeGrade, setActiveGrade] = useState<GradeFilter>("Alle")
   const [selectedModelId, setSelectedModelId] = useState<string>("")
@@ -337,6 +339,12 @@ function PageContent() {
 
   useEffect(() => {
     setHydrated(true)
+    try {
+      const storedTheme = localStorage.getItem(UI_THEME_KEY)
+      if (storedTheme === "blackboard" || storedTheme === "atelier") setUiTheme(storedTheme)
+    } catch {
+      // The default theme also works when browser storage is unavailable.
+    }
     const storedTemperature = localStorage.getItem(TEMPERATURE_KEY)
     if (storedTemperature !== null) {
       const value = Number(storedTemperature)
@@ -713,104 +721,210 @@ function PageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 pt-16 md:px-8 lg:pt-20">
-        <header className="flex flex-col gap-6">
-          <span
-            className={cx(
-              "inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wide",
-              theme.badge
-            )}
-          >
-            Topic Library
-          </span>
-          <div className="flex flex-col gap-4">
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-              Kuratiertes Themenarchiv für Deutsch und Religion
-            </h1>
-            <p className="max-w-3xl text-base text-slate-600 sm:text-lg">
-              Wähle ein Fach, filtere nach Klassenstufe und erhalte inspirierende Themenbausteine für Arbeitsblätter,
-              Projekte oder Unterrichtsreihen. Alle Inhalte sind auf die Klassen 1-4 zugeschnitten und lassen sich
-              direkt mit dem Generator kombinieren.
-            </p>
+    <div data-theme={uiTheme} className="atelier min-h-screen bg-canvas pb-8 text-ink">
+      <main className="mx-auto flex w-full max-w-[100rem] flex-col gap-6 px-4 pt-6 md:px-6 lg:px-8 lg:pt-8">
+        <header className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between xl:gap-6">
+            <div className="min-w-0 flex flex-col gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-ink lg:text-3xl">
+                Kuratiertes Themenarchiv für Deutsch und Religion
+              </h1>
+              <p className="max-w-5xl text-base text-muted">
+                Wähle ein Fach, filtere nach Klassenstufe und erhalte inspirierende Themenbausteine für Arbeitsblätter,
+                Projekte oder Unterrichtsreihen. Alle Inhalte sind auf die Klassen 1-4 zugeschnitten und lassen sich
+                direkt mit dem Generator kombinieren.
+              </p>
+            </div>
+            <label className="flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink">
+              Design
+              <select
+                value={uiTheme}
+                onChange={event => {
+                  const value = event.target.value === "atelier" ? "atelier" : "blackboard"
+                  setUiTheme(value)
+                  try {
+                    localStorage.setItem(UI_THEME_KEY, value)
+                  } catch {
+                    // Theme switching still works without saving the preference.
+                  }
+                }}
+                className="rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm font-semibold text-ink"
+              >
+                <option value="blackboard">Kreidetafel</option>
+                <option value="atelier">Atelier</option>
+              </select>
+            </label>
           </div>
-          <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5">
+          <div className="flex flex-wrap gap-2 text-sm text-muted">
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               {activeSubject.title}: {visibleTopicCount} Themen sichtbar
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5">
-              <span className="h-2 w-2 rounded-full bg-slate-400" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5">
+              <span className="h-2 w-2 rounded-full bg-muted" />
               Gesamtbibliothek: {allTopics.length} Themen in {activeSubject.categories.length} Clustern
             </span>
           </div>
         </header>
 
-        <ProviderSettings
-          provider={provider}
-          onProviderChange={handleProviderChange}
-          selectedModel={openRouterModel}
-          onModelChange={handleOpenRouterModelChange}
-          onTokenChange={handleOpenRouterTokenChange}
-          usageRefresh={openRouterUsageRefresh}
-        />
+        <details data-ai-settings className="rounded-2xl border border-line-strong bg-settings shadow-sm shadow-ink/10">
+          <summary className="cursor-pointer rounded-2xl px-4 py-3 text-sm font-semibold text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+            KI-Einstellungen
+          </summary>
+          <div className="flex flex-col gap-4 px-4 pb-4 sm:px-6 sm:pb-6">
+            <ProviderSettings
+              provider={provider}
+              onProviderChange={handleProviderChange}
+              selectedModel={openRouterModel}
+              onModelChange={handleOpenRouterModelChange}
+              onTokenChange={handleOpenRouterTokenChange}
+              usageRefresh={openRouterUsageRefresh}
+            />
 
-        {provider === "local" && (
-          <ModelLoader externalSelectedModelId={selectedModelId} onModelIdChange={setSelectedModelId} />
-        )}
+            {provider === "local" && (
+              <ModelLoader externalSelectedModelId={selectedModelId} onModelIdChange={setSelectedModelId} />
+            )}
 
-        <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">Generator</span>
-            <h2 className="text-xl font-semibold text-slate-900">Entwurf aus einem Thema starten</h2>
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <label htmlFor="temperature" className="text-sm font-semibold text-slate-700">
-                Temperatur: {temperature.toLocaleString("de-DE", { minimumFractionDigits: 1 })}
-              </label>
-              {temperature !== DEFAULT_TEMPERATURE && (
-                <button
-                  type="button"
-                  onClick={() => setTemperature(DEFAULT_TEMPERATURE)}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline"
-                >
-                  Auf Standard zurücksetzen
-                </button>
+            <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-muted p-4">
+              <div className="flex items-center justify-between gap-4">
+                <label htmlFor="temperature" className="text-sm font-semibold text-ink-soft">
+                  Temperatur: {temperature.toLocaleString("de-DE", { minimumFractionDigits: 1 })}
+                </label>
+                {temperature !== DEFAULT_TEMPERATURE && (
+                  <button
+                    type="button"
+                    onClick={() => setTemperature(DEFAULT_TEMPERATURE)}
+                    className="text-xs font-semibold text-muted hover:text-ink hover:underline"
+                  >
+                    Auf Standard zurücksetzen
+                  </button>
+                )}
+              </div>
+              <input
+                id="temperature"
+                type="range"
+                min="0"
+                max="1.2"
+                step="0.1"
+                value={temperature}
+                onChange={event => setTemperature(Number(event.target.value))}
+                className="w-full accent-accent"
+              />
+              <p className="text-xs text-muted">
+                Niedriger erzeugt gleichmäßigere Ergebnisse. Höher sorgt für mehr Abwechslung. Für Schulmaterialien
+                empfehlen wir 0,4.
+              </p>
+              {temperature >= 0.9 && (
+                <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                  <p className="font-semibold">Sehr hohe Einstellung</p>
+                  <p>Aufgaben und Lösungen können ungenauer oder widersprüchlich werden. Nutze besser 0,4.</p>
+                </div>
+              )}
+              {temperature <= 0.1 && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <p className="font-semibold">Sehr niedrige Einstellung</p>
+                  <p>Die Ergebnisse können starr und wiederholend wirken. Nutze besser 0,4.</p>
+                </div>
               )}
             </div>
-            <input
-              id="temperature"
-              type="range"
-              min="0"
-              max="1.2"
-              step="0.1"
-              value={temperature}
-              onChange={event => setTemperature(Number(event.target.value))}
-              className="w-full accent-slate-900"
-            />
-            <p className="text-xs text-slate-500">
-              Niedriger erzeugt gleichmäßigere Ergebnisse. Höher sorgt für mehr Abwechslung. Für Schulmaterialien
-              empfehlen wir 0,4.
-            </p>
-            {temperature >= 0.9 && (
-              <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                <p className="font-semibold">Sehr hohe Einstellung</p>
-                <p>Aufgaben und Lösungen können ungenauer oder widersprüchlich werden. Nutze besser 0,4.</p>
-              </div>
-            )}
-            {temperature <= 0.1 && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <p className="font-semibold">Sehr niedrige Einstellung</p>
-                <p>Die Ergebnisse können starr und wiederholend wirken. Nutze besser 0,4.</p>
-              </div>
-            )}
+          </div>
+        </details>
+
+        <section className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-4 shadow-sm shadow-ink/10 lg:p-5">
+          <div className="flex flex-col gap-1 border-b border-line pb-3">
+            <span className="text-sm font-semibold uppercase tracking-wide text-accent">Generator</span>
+            <h2 className="text-xl font-semibold text-ink">Entwurf aus einem Thema starten</h2>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dokumenttyp wählen</label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <fieldset className="min-w-0">
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-accent">Fach wählen</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SUBJECTS.map(subject => {
+                  const isActive = subject.id === activeSubject.id
+                  return (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      onClick={() => setActiveSubjectId(subject.id)}
+                      aria-pressed={isActive}
+                      className={cx(
+                        "group relative flex h-full flex-col gap-1 rounded-xl border p-3 text-left transition duration-200",
+                        isActive
+                          ? "border-accent bg-accent text-on-accent shadow-sm"
+                          : "border-line cursor-pointer bg-surface-muted hover:border-accent hover:shadow-sm"
+                      )}
+                    >
+                      <span
+                        className={cx(
+                          "inline-flex items-center gap-3 text-left text-lg font-semibold",
+                          isActive ? "text-on-accent" : "text-ink"
+                        )}
+                      >
+                        {subject.title}
+                        <span
+                          className={cx(
+                            "rounded-full px-2 py-0.5 text-xs font-semibold transition",
+                            isActive
+                              ? "bg-surface/20 text-on-accent"
+                              : "bg-surface-muted text-muted group-hover:text-ink"
+                          )}
+                        >
+                          {subject.topics.length}
+                        </span>
+                      </span>
+                      <p className={cx("text-sm", isActive ? "text-on-accent" : "text-muted")}>{subject.tagline}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
+
+            <fieldset className="min-w-0">
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Klasse wählen</legend>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-wrap gap-2">
+                  {gradeFilters.map(grade => {
+                    const isActive = activeGrade === grade
+                    const label = grade === "Alle" ? "Alle Klassen" : `Klasse ${grade}`
+                    const count = grade === "Alle" ? visibleTopicCount : gradeCounts[grade]
+                    return (
+                      <button
+                        key={grade}
+                        type="button"
+                        onClick={() => setActiveGrade(grade)}
+                        aria-pressed={isActive}
+                        className={cx(
+                          "group inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
+                          isActive
+                            ? "border-accent bg-accent text-on-accent shadow-sm"
+                            : "cursor-pointer border-line bg-surface-muted text-ink-soft hover:border-accent hover:text-ink"
+                        )}
+                      >
+                        <span>{label}</span>
+                        <span
+                          className={cx(
+                            "rounded-full px-2 py-0.5 text-xs font-semibold transition",
+                            isActive
+                              ? "bg-surface/20 text-on-accent"
+                              : "bg-surface-muted text-muted group-hover:text-ink"
+                          )}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </fieldset>
+          </div>
+
+          <fieldset className="min-w-0">
+            <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+              Dokumenttyp wählen
+            </legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
               {DOCUMENT_TYPES.map(docType => {
                 const isSelected = selectedDocumentType === docType.id
                 return (
@@ -818,19 +932,20 @@ function PageContent() {
                     key={docType.id}
                     type="button"
                     onClick={() => setSelectedDocumentType(docType.id)}
+                    aria-pressed={isSelected}
                     className={cx(
-                      "group flex flex-col gap-1 cursor-pointer rounded-xl border p-3 text-left transition",
+                      "group flex min-w-0 flex-col gap-1 cursor-pointer rounded-xl border px-3 py-2 text-left transition sm:flex-row sm:items-center sm:gap-2",
                       isSelected
-                        ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+                        ? "border-accent bg-accent text-on-accent shadow-sm"
+                        : "border-line bg-surface-muted hover:border-accent hover:shadow-sm"
                     )}
                     title={docType.description}
                   >
-                    <span className="text-2xl">{docType.icon}</span>
+                    <span className="shrink-0 text-xl">{docType.icon}</span>
                     <span
                       className={cx(
                         "text-xs font-semibold",
-                        isSelected ? "text-white" : "text-slate-700 group-hover:text-slate-900"
+                        isSelected ? "text-on-accent" : "text-ink-soft group-hover:text-ink"
                       )}
                     >
                       {docType.label}
@@ -839,8 +954,8 @@ function PageContent() {
                 )
               })}
             </div>
-            <p className="text-xs text-slate-500">{getDocumentType(selectedDocumentType).description}</p>
-          </div>
+            <p className="mt-3 text-xs text-muted">{getDocumentType(selectedDocumentType).description}</p>
+          </fieldset>
 
           {!webgpu.supported && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -850,46 +965,47 @@ function PageContent() {
           )}
 
           {engineStatus === "initializing" && progress && (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+            <div className="rounded-2xl border border-line bg-surface-muted px-4 py-3 text-xs text-muted">
               <span className="font-semibold">Ein Modell wird geladen, bitte warte...</span>
             </div>
           )}
 
           <form
             onSubmit={handleCustomTopicSubmit}
-            className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-end"
+            className="flex flex-col gap-3 rounded-2xl border border-line bg-settings p-4 sm:flex-row sm:items-end"
           >
-            <label className="flex flex-1 flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="flex min-w-0 flex-1 flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
               Eigenes Thema
               <input
                 type="text"
                 value={customTopic}
                 onChange={event => setCustomTopic(event.target.value)}
                 placeholder="z. B. Die Schöpfungsgeschichte und Verantwortung für die Umwelt"
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal normal-case tracking-normal text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400/60"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-sm font-normal normal-case tracking-normal text-ink focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </label>
             <button
               type="submit"
               disabled={!customTopic.trim() || generationUnavailable}
-              className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="shrink-0 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-on-accent transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-disabled"
             >
               Entwurf erstellen
             </button>
           </form>
 
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          <div className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-muted">
             {queue.length === 0 && (
               <p>
-                Wähle einen Dokumenttyp und ein Thema unten, dann klicke auf{" "}
-                <span className="font-semibold">„Entwurf erstellen"</span>. Das Modell erstellt ein vollständiges{" "}
-                {getDocumentType(selectedDocumentType).label} mit Aufgaben und Lösungen.
+                Wähle Fach, Klasse und Dokumenttyp. Gib ein eigenes Thema ein und klicke auf{" "}
+                <span className="font-semibold">„Entwurf erstellen"</span> oder nutze ein Thema aus der Bibliothek
+                unten. Das Modell erstellt ein vollständiges {getDocumentType(selectedDocumentType).label} mit Aufgaben
+                und Lösungen.
               </p>
             )}
             {queue.length > 0 && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                     Warteschlange: {queue.filter(q => q.status === "pending" || q.status === "running").length} aktiv,{" "}
                     {queue.filter(q => q.status === "success").length} abgeschlossen
                   </span>
@@ -917,87 +1033,17 @@ function PageContent() {
                   setProvider(itemProvider)
                   if (itemProvider === "openrouter") setOpenRouterModel(modelId)
                   else setSelectedModelId(modelId)
-                  document
-                    .querySelector(itemProvider === "local" ? "[data-model-loader]" : "main")
-                    ?.scrollIntoView({ behavior: "smooth" })
+                  const settings = document.querySelector<HTMLDetailsElement>("[data-ai-settings]")
+                  if (settings) {
+                    settings.open = true
+                    settings.scrollIntoView({ behavior: "smooth" })
+                  }
                 }}
               />
             ))}
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2">
-          {SUBJECTS.map(subject => {
-            const isActive = subject.id === activeSubject.id
-            return (
-              <button
-                key={subject.id}
-                type="button"
-                onClick={() => setActiveSubjectId(subject.id)}
-                className={cx(
-                  "group relative flex h-full flex-col gap-3 rounded-3xl border p-6 text-left transition duration-200",
-                  isActive
-                    ? "border-slate-900 bg-slate-900 text-white shadow-xl shadow-slate-900/20"
-                    : "border-slate-200 cursor-pointer bg-white/80 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/10"
-                )}
-              >
-                <span
-                  className={cx(
-                    "inline-flex items-center gap-3 text-left text-lg font-semibold",
-                    isActive ? "text-white" : "text-slate-800"
-                  )}
-                >
-                  {subject.title}
-                  <span
-                    className={cx(
-                      "rounded-full px-2 py-0.5 text-xs font-semibold transition",
-                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600 group-hover:text-slate-800"
-                    )}
-                  >
-                    {subject.topics.length}
-                  </span>
-                </span>
-                <p className={cx("text-sm", isActive ? "text-slate-200" : "text-slate-600")}>{subject.tagline}</p>
-              </button>
-            )
-          })}
-        </section>
-
         <section className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap gap-2">
-              {gradeFilters.map(grade => {
-                const isActive = activeGrade === grade
-                const label = grade === "Alle" ? "Alle Klassen" : `Klasse ${grade}`
-                const count = grade === "Alle" ? visibleTopicCount : gradeCounts[grade]
-                return (
-                  <button
-                    key={grade}
-                    type="button"
-                    onClick={() => setActiveGrade(grade)}
-                    className={cx(
-                      "group inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                        : "cursor-pointer border-slate-200 bg-white/80 text-slate-600 hover:border-slate-300 hover:text-slate-800"
-                    )}
-                  >
-                    <span>{label}</span>
-                    <span
-                      className={cx(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold transition",
-                        isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600 group-hover:text-slate-800"
-                      )}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-10">
           {activeSubject.categories.map(category => {
             const topicsInCategory = activeSubject.topics.filter(topic => {
               if (topic.category !== category.id) {
@@ -1017,7 +1063,7 @@ function PageContent() {
               <div
                 key={activeSubject.id + "-category-" + category.id}
                 className={cx(
-                  "rounded-3xl border bg-white/80 p-6 shadow-sm shadow-slate-900/5",
+                  "rounded-2xl border p-4 shadow-sm shadow-ink/10 lg:p-5",
                   theme.cardBorder,
                   theme.cardShadow
                 )}
@@ -1025,29 +1071,29 @@ function PageContent() {
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="flex flex-col gap-2">
                     <h3 className={cx("text-xl font-semibold", theme.categoryHeading)}>{category.label}</h3>
-                    <p className="max-w-3xl text-sm text-slate-600">{category.summary}</p>
+                    <p className="max-w-3xl text-sm text-muted">{category.summary}</p>
                   </div>
-                  <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="w-fit rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
                     {topicsInCategory.length} Themen
                   </span>
                 </div>
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {topicsInCategory.map(topic => {
                     const isTopicLoading = queue.some(q => q.status === "running" && q.topic.id === topic.id)
                     return (
                       <article
                         key={topic.id}
-                        className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-slate-900/10"
+                        className="flex min-w-0 h-full flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-ink/10"
                       >
                         <div className="flex flex-col gap-2">
-                          <h4 className="text-lg font-semibold text-slate-900">{topic.label}</h4>
-                          <p className="text-sm leading-relaxed text-slate-600">{topic.description}</p>
+                          <h4 className="text-lg font-semibold text-ink">{topic.label}</h4>
+                          <p className="text-sm leading-relaxed text-muted">{topic.description}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {topic.grades.map(grade => (
                             <span
                               key={topic.id + "-grade-" + grade}
-                              className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600"
+                              className="rounded-full border border-line bg-surface-muted px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-muted"
                             >
                               Kl. {grade}
                             </span>
@@ -1055,7 +1101,7 @@ function PageContent() {
                         </div>
                         {topic.focus.length > 0 && (
                           <div className="flex flex-col gap-1">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Fokus</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted">Fokus</span>
                             <div className="flex flex-wrap gap-2">
                               {topic.focus.map(item => (
                                 <span
@@ -1072,7 +1118,7 @@ function PageContent() {
                           type="button"
                           onClick={() => handleGenerate(topic)}
                           disabled={generationUnavailable}
-                          className="group mt-auto inline-flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                          className="group mt-auto inline-flex w-full cursor-pointer items-center justify-between rounded-xl border border-accent bg-surface-muted px-4 py-3 text-sm font-semibold text-accent shadow-sm transition hover:border-accent hover:bg-settings hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted disabled:shadow-none"
                         >
                           <span>{isTopicLoading ? "Wird erstellt…" : "Thema verwenden"}</span>
                           <span
@@ -1089,6 +1135,33 @@ function PageContent() {
               </div>
             )
           })}
+        </section>
+
+        <section className="border-t border-line pt-8" aria-labelledby="seo-heading">
+          <div className="max-w-4xl">
+            <h2 id="seo-heading" className="text-xl font-semibold text-ink">
+              Unterrichtsmaterial für die Grundschule erstellen
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              SchoolSheet-Atelier unterstützt Lehrkräfte bei der Vorbereitung von Deutsch- und Religionsunterricht in
+              den Klassen 1 bis 4. Das Themenarchiv verbindet kuratierte Unterrichtsideen mit einem flexiblen
+              Arbeitsblatt-Generator: Wähle ein Fach, eine Klassenstufe und ein Thema oder formuliere deinen eigenen
+              Unterrichtsimpuls.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              Für Deutsch findest du unter anderem Material zu Lautbewusstsein, Grammatik, Rechtschreibung, Lesen,
+              Schreiben und Wortschatz. Im Bereich Religion stehen biblische Geschichten, Kirchenjahr, Symbole, Werte,
+              Gemeinschaft und interreligiöses Lernen zur Auswahl. So lassen sich passende Unterrichtsmaterialien für
+              unterschiedliche Lernstände und Unterrichtsreihen vorbereiten.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              Neben klassischen Arbeitsblättern unterstützt die Anwendung Klassenarbeiten, Lesetexte, Lückentexte,
+              Multiple-Choice- und Kurzantwort-Quiz, Lernkarten, Antwortbögen, Projektaufträge, Stationenlernen und
+              Selbstlernhefte. Die Erstellung läuft direkt im Browser auf deinem Gerät. Eine Vorschau hilft bei der
+              Kontrolle, anschließend kannst du das Material als PDF oder DOCX herunterladen und für den Unterricht
+              weiterbearbeiten.
+            </p>
+          </div>
         </section>
       </main>
     </div>

@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+@theme {
+  --color-canvas: oklch(92.552% 0.0125 156.988);
+  --color-surface: oklch(99.393% 0.00818 91.48);
+  --color-surface-muted: oklch(95.542% 0.01067 136.56);
+  --color-settings: oklch(88.3% 0.02603 158.143);
+  --color-line: oklch(78.738% 0.02592 156.579);
+  --color-line-strong: oklch(62.876% 0.03176 159.426);
+  --color-ink: oklch(33.11% 0.0372 173.64);
+  --color-ink-soft: oklch(40.59% 0.03711 172.273);
+  --color-muted: oklch(47% 0.02902 167.232);
+  --color-accent: oklch(45.315% 0.07767 174.266);
+  --color-accent-hover: oklch(37.543% 0.06364 174.741);
+  --color-on-accent: oklch(99.393% 0.00818 91.48);
+  --color-disabled: oklch(87.463% 0.01608 154.434);
+  --color-warm-panel: oklch(91.625% 0.04244 85.956);
+  --color-warm-rule: oklch(74.699% 0.08411 84.324);
+  --color-warm-ink: oklch(45.764% 0.0831 75.401);
+  --color-warm-chip: oklch(94.785% 0.04139 88.795);
+  --color-cool-panel: oklch(91.881% 0.01867 227.292);
+  --color-cool-rule: oklch(73.523% 0.04364 230.477);
+  --color-cool-ink: oklch(43.218% 0.06512 234.826);
+  --color-cool-chip: oklch(95.164% 0.01425 231.208);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -23,4 +47,101 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.atelier {
+  font-family: var(--font-sans), sans-serif;
+  color-scheme: light;
+}
+
+/* Both palettes live here. The data attribute changes appearance only. */
+.atelier[data-theme="blackboard"] {
+  --color-canvas: oklch(26.004% 0.03135 171.204);
+  --color-surface: oklch(37.056% 0.04702 169.973);
+  --color-surface-muted: oklch(41.596% 0.05075 168.697);
+  --color-settings: oklch(30.445% 0.03725 167.225);
+  --color-line: oklch(54.139% 0.04636 166.308);
+  --color-line-strong: oklch(72.818% 0.0445 156.829);
+  --color-ink: oklch(95.84% 0.02523 99.529);
+  --color-ink-soft: oklch(92.285% 0.02525 106.884);
+  --color-muted: oklch(83.786% 0.03588 140);
+  --color-accent: oklch(88.787% 0.10211 93.114);
+  --color-accent-hover: oklch(93.203% 0.08963 90.862);
+  --color-on-accent: oklch(32.594% 0.03658 154.705);
+  --color-disabled: oklch(43.118% 0.03817 165.36);
+  --color-warm-panel: oklch(36.783% 0.04294 131.351);
+  --color-warm-rule: oklch(64.66% 0.07273 128.291);
+  --color-warm-ink: oklch(88.79% 0.08058 100.078);
+  --color-warm-chip: oklch(43.482% 0.05346 128.837);
+  --color-cool-panel: oklch(34.869% 0.03445 213.386);
+  --color-cool-rule: oklch(67.088% 0.0447 223.717);
+  --color-cool-ink: oklch(90.864% 0.03339 215.591);
+  --color-cool-chip: oklch(43.104% 0.04066 214.755);
+  --color-rose-50: oklch(32.373% 0.04039 359.6);
+  --color-rose-200: oklch(61.361% 0.07575 2.674);
+  --color-rose-300: oklch(70.966% 0.07854 4.665);
+  --color-rose-600: oklch(84.793% 0.08615 7.297);
+  --color-rose-700: oklch(88.583% 0.06233 7.241);
+  --color-rose-800: oklch(93.384% 0.03502 4.61);
+  --color-amber-50: oklch(35.245% 0.04024 87.707);
+  --color-amber-200: oklch(65.4% 0.08487 89.337);
+  --color-amber-300: oklch(75.105% 0.08646 89.377);
+  --color-amber-700: oklch(88.787% 0.10211 93.114);
+  --color-amber-800: oklch(92.846% 0.06803 92.718);
+  --color-emerald-50: oklch(38.139% 0.05544 162.729);
+  --color-emerald-200: oklch(68.906% 0.06801 155.325);
+  --color-emerald-700: oklch(89.795% 0.0671 153.485);
+  --font-board-heading: "Segoe Print", "Comic Sans MS", cursive;
+  --color-board-frame: oklch(52.443% 0.05554 61.152);
+  font-family: var(--font-board-heading);
+  color-scheme: dark;
+}
+
+.atelier[data-theme="blackboard"] :is(h1, h2, h3, h4) {
+  font-family: var(--font-board-heading);
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.atelier[data-theme="blackboard"] main > section:first-of-type {
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 4px var(--color-board-frame);
+}
+
+.atelier[data-theme="blackboard"] article {
+  border-radius: 0.75rem;
+}
+
+.atelier :is(button, summary, input, select):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.atelier input::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+.atelier :is(input, select) {
+  accent-color: var(--color-accent);
+}
+
+.atelier :is(button, input, select).border-line {
+  border-color: var(--color-line-strong);
+}
+
+.atelier button:disabled {
+  color: var(--color-muted);
+}
+
+.atelier [data-ai-settings] > summary:hover {
+  background-color: var(--color-surface-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atelier *,
+  .atelier *::before,
+  .atelier *::after {
+    transition: none;
+  }
 }

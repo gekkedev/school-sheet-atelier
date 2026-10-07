@@ -162,28 +162,25 @@ export function ModelLoader({
   }
 
   return (
-    <section
-      data-model-loader
-      className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5"
-    >
+    <section data-model-loader className="rounded-3xl border border-line bg-surface p-6 shadow-sm shadow-ink/10">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">On-Device LLM</span>
-            <h2 className="text-xl font-semibold text-slate-900">Lade das WebLLM-Modell in deinen Browser</h2>
-            <p className="text-sm text-slate-600">
+            <span className="text-sm font-semibold uppercase tracking-wide text-muted">On-Device LLM</span>
+            <h2 className="text-xl font-semibold text-ink">Lade das WebLLM-Modell in deinen Browser</h2>
+            <p className="text-sm text-muted">
               Standard: {MODEL_LABELS[DEFAULT_MODEL_ID]}. Fallback: {MODEL_LABELS[FALLBACK_MODEL_ID]}.
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 md:w-72">
             <div className="flex items-center justify-between">
-              <label htmlFor="model-select" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <label htmlFor="model-select" className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Modell auswählen
               </label>
               <button
                 type="button"
                 onClick={() => setShowExperimental(!showExperimental)}
-                className="text-[10px] text-slate-400 hover:text-slate-600"
+                className="text-[10px] text-muted hover:text-muted"
                 title="Zeige alle verfügbaren Modelle (experimentell)"
               >
                 {showExperimental ? "Nur geprüfte" : "Alle anzeigen"}
@@ -193,7 +190,7 @@ export function ModelLoader({
               id="model-select"
               value={selectedModelId}
               onChange={handleModelChange}
-              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-slate-400/60"
+              className="rounded-full border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink-soft shadow-sm transition focus:outline-none focus:ring-2 focus:ring-accent"
             >
               {modelOptions.map(option => (
                 <option key={option.id} value={option.id}>
@@ -202,34 +199,34 @@ export function ModelLoader({
                 </option>
               ))}
             </select>
-            <div className="flex flex-col items-start gap-1 text-xs text-slate-500 md:items-end">
+            <div className="flex flex-col items-start gap-1 text-xs text-muted md:items-end">
               <span>Downloadgröße: {selectedMeta?.downloadSize ?? "–"}</span>
               <span>Kontextfenster: {selectedMeta?.contextWindow?.toLocaleString("de-DE") ?? "–"} Token</span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
           {isSelectedCached ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               {selectedLabel}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-              <span className="h-2 w-2 rounded-full bg-slate-400" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface-muted px-3 py-1 text-xs font-semibold text-muted">
+              <span className="h-2 w-2 rounded-full bg-muted" />
               Erstdownload: {selectedMeta?.downloadSize ?? "–"}
             </span>
           )}
-          <div className="flex flex-col items-end gap-1 text-right text-xs text-slate-500">
+          <div className="flex flex-col items-end gap-1 text-right text-xs text-muted">
             {statusLabel && <span className="uppercase tracking-wide">{statusLabel}</span>}
             {activeLabel && (
               <span>
-                Geladenes Modell: <span className="font-semibold text-slate-600">{activeLabel}</span>
+                Geladenes Modell: <span className="font-semibold text-muted">{activeLabel}</span>
               </span>
             )}
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted">
             Im Cache:{" "}
             {cachedModels.length > 0
               ? cachedModels.map((id, index) => (
@@ -238,7 +235,7 @@ export function ModelLoader({
                     <button
                       type="button"
                       onClick={() => setSelectedModelId(id)}
-                      className="hover:text-slate-600 hover:underline"
+                      className="hover:text-muted hover:underline"
                     >
                       {MODEL_LABELS[id] ?? id}
                     </button>
@@ -264,7 +261,7 @@ export function ModelLoader({
                 type="button"
                 onClick={handleLoad}
                 disabled={status === "unsupported" || isGenerating}
-                className="cursor-pointer inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-300 disabled:text-slate-600"
+                className="cursor-pointer inline-flex w-fit items-center gap-2 rounded-full border border-line bg-accent px-5 py-2 text-sm font-semibold text-on-accent shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:border-line disabled:bg-disabled disabled:text-muted"
               >
                 {status === "ready" || (progress && progress.modelId !== selectedModelId)
                   ? "Modell wechseln"
@@ -273,8 +270,8 @@ export function ModelLoader({
             )}
 
             {(status === "initializing" || progress) && (
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600" />
+              <div className="flex items-center gap-2 text-xs text-muted">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-accent" />
                 <span>{progress?.message ?? "Lade Modellartefakte"}</span>
               </div>
             )}
@@ -297,7 +294,7 @@ export function ModelLoader({
                   <button
                     type="button"
                     onClick={handleLoad}
-                    className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
+                    className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-rose-200 bg-surface px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
                   >
                     Erneut versuchen
                   </button>

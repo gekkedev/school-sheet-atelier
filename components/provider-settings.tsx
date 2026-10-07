@@ -120,19 +120,19 @@ export function ProviderSettings({
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-900/5">
+    <section className="rounded-3xl border border-line bg-surface p-6 shadow-sm shadow-ink/10">
       <div className="flex flex-col gap-5">
         <div>
-          <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">KI-Anbieter</span>
-          <h2 className="text-xl font-semibold text-slate-900">Lokal oder OpenRouter</h2>
+          <span className="text-sm font-semibold uppercase tracking-wide text-muted">KI-Anbieter</span>
+          <h2 className="text-xl font-semibold text-ink">Lokal oder OpenRouter</h2>
         </div>
-        <div className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-100 p-1">
+        <div className="inline-flex w-fit rounded-full border border-line bg-surface-muted p-1">
           {(["local", "openrouter"] as const).map(value => (
             <button
               key={value}
               type="button"
               onClick={() => onProviderChange(value)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${provider === value ? "bg-slate-900 text-white" : "text-slate-600"}`}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${provider === value ? "bg-accent text-on-accent" : "text-muted"}`}
             >
               {value === "local" ? "Lokal" : "OpenRouter"}
             </button>
@@ -140,7 +140,7 @@ export function ProviderSettings({
         </div>
         {provider === "openrouter" && (
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
               OpenRouter API-Token
               <input
                 type="password"
@@ -148,18 +148,18 @@ export function ProviderSettings({
                 onChange={event => updateToken(event.target.value)}
                 autoComplete="off"
                 placeholder="sk-or-v1-…"
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm normal-case tracking-normal text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400/60"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-sm normal-case tracking-normal text-ink focus:outline-none focus:ring-2 focus:ring-accent"
               />
-              <span className="font-normal normal-case tracking-normal text-slate-400">
+              <span className="font-normal normal-case tracking-normal text-muted">
                 Wird automatisch nur in diesem Browser gespeichert.
               </span>
               {keyInfo && (
-                <div className="mt-2 flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 font-normal normal-case tracking-normal">
+                <div className="mt-2 flex flex-col gap-2 rounded-xl border border-line bg-surface-muted p-3 font-normal normal-case tracking-normal">
                   {keyInfo.limit === null ? (
-                    <span className="text-sm text-slate-600">Kein Ausgabenlimit für diesen API-Key gesetzt.</span>
+                    <span className="text-sm text-muted">Kein Ausgabenlimit für diesen API-Key gesetzt.</span>
                   ) : (
                     <>
-                      <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+                      <div className="flex items-center justify-between gap-3 text-sm text-muted">
                         <span>Ausgabenlimit</span>
                         <span className="font-semibold">
                           {formatUsdAsEuro(limitUsedUsd)} / {formatUsdAsEuro(keyInfo.limit)}
@@ -171,7 +171,7 @@ export function ProviderSettings({
                         aria-valuemin={0}
                         aria-valuemax={100}
                         aria-valuenow={Math.round(limitPercent ?? 0)}
-                        className="h-2 overflow-hidden rounded-full bg-slate-200"
+                        className="h-2 overflow-hidden rounded-full bg-line"
                       >
                         <div
                           className={`h-full rounded-full ${limitPercent !== null && limitPercent >= 100 ? "bg-rose-500" : limitPercent !== null && limitPercent >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
@@ -182,7 +182,7 @@ export function ProviderSettings({
                         className={
                           limitPercent !== null && limitPercent >= 100
                             ? "text-sm font-semibold text-rose-700"
-                            : "text-xs text-slate-500"
+                            : "text-xs text-muted"
                         }
                       >
                         {limitPercent !== null && limitPercent >= 100
@@ -196,19 +196,16 @@ export function ProviderSettings({
             </label>
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <label
-                  htmlFor="openrouter-model"
-                  className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
+                <label htmlFor="openrouter-model" className="text-xs font-semibold uppercase tracking-wide text-muted">
                   Modell
                 </label>
                 <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                  <label className="flex items-center gap-1.5 text-xs text-muted">
                     <input type="checkbox" checked={freeOnly} onChange={event => setFreeOnly(event.target.checked)} />
                     Nur kostenlose
                   </label>
                   <label
-                    className="flex items-center gap-1.5 text-xs text-slate-600"
+                    className="flex items-center gap-1.5 text-xs text-muted"
                     title="Keine Modelle chinesischer Anbieter oder Marken anzeigen"
                   >
                     <input
@@ -218,7 +215,7 @@ export function ProviderSettings({
                     />
                     🇨🇳 ausschließen
                   </label>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                  <label className="flex items-center gap-1.5 text-xs text-muted">
                     <input
                       type="checkbox"
                       checked={excludeMusk}
@@ -233,7 +230,7 @@ export function ProviderSettings({
                 value={visibleModels.some(model => model.id === selectedModel) ? selectedModel : ""}
                 onChange={event => onModelChange(event.target.value)}
                 disabled={!token || loading}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400/60 disabled:bg-slate-100"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-surface-muted"
               >
                 <option value="">{loading ? "Modelle werden geladen…" : "Modell auswählen"}</option>
                 {visibleModels.map(model => (
@@ -246,7 +243,7 @@ export function ProviderSettings({
                 ))}
               </select>
               {selectedModelInfo && (
-                <span className="text-sm font-semibold text-slate-700">
+                <span className="text-sm font-semibold text-ink-soft">
                   Geschätzte Kosten pro Seite: {formatEuroCents(estimateEuroCentsPerPage(selectedModelInfo))}
                 </span>
               )}
