@@ -86,13 +86,58 @@ function formatCreationDate(timestamp: number | undefined): string | null {
   return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(date)
 }
 
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle")
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current)
+    },
+    []
+  )
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text)
+          setStatus("success")
+        } catch {
+          setStatus("error")
+        }
+        resetTimer.current = setTimeout(() => setStatus("idle"), 2000)
+      }}
+      disabled={status !== "idle"}
+      title={`${label} kopieren`}
+      aria-label={`${label} kopieren`}
+      className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-muted hover:text-ink hover:underline disabled:opacity-50"
+    >
+      {label}
+      {status === "idle" ? (
+        <svg
+          aria-hidden="true"
+          className="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.75}
+        >
+          <rect x="8" y="4" width="8" height="4" rx="1" />
+          <path d="M8 6H5v15h14V6h-3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <span role="status">{status === "success" ? "✓ Kopiert" : "Fehler"}</span>
+      )}
+    </button>
+  )
+}
+
 interface QueueItemProps {
   item: GenerationItem
   isExpanded: boolean
-  copyStatus: "idle" | "success" | "error"
   onToggleExpanded: () => void
   onCancel: () => void
-  onCopy: (output: string) => void
   onDelete: () => void
   onModelClick: (modelId: string, provider: AiProvider, image?: boolean) => void
   onDownloadPDF: () => void
@@ -102,10 +147,8 @@ interface QueueItemProps {
 const QueueItem = memo(function QueueItem({
   item,
   isExpanded,
-  copyStatus,
   onToggleExpanded,
   onCancel,
-  onCopy,
   onDelete,
   onModelClick,
   onDownloadPDF,
@@ -193,6 +236,7 @@ const QueueItem = memo(function QueueItem({
           )}
         </button>
         <div className="flex items-center gap-3">
+          {item.topic.category === "custom" && <CopyButton text={item.topic.label} label="Prompt" />}
           {!!item.prompts?.length && (
             <button
               type="button"
@@ -230,14 +274,7 @@ const QueueItem = memo(function QueueItem({
               >
                 DOCX ↓
               </button>
-              <button
-                type="button"
-                onClick={() => onCopy(item.output)}
-                disabled={copyStatus !== "idle"}
-                className="cursor-pointer text-xs font-medium text-muted hover:text-ink hover:underline disabled:opacity-50"
-              >
-                {copyStatus === "success" ? "✓ Kopiert" : copyStatus === "error" ? "Fehler" : "Kopieren"}
-              </button>
+              <CopyButton text={item.output} label="Markdown" />
             </>
           )}
           {(item.status === "success" || item.status === "error" || item.status === "cancelled") && (
@@ -427,7 +464,6 @@ function PageContent() {
 
   const [queue, setQueue] = useState<GenerationItem[]>([])
   const activeJob = useRef<{ id: string; controller: AbortController } | null>(null)
-  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle")
   const [hydrated, setHydrated] = useState(false)
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
   const handleProviderChange = useCallback((value: AiProvider) => setProvider(value), [])
@@ -579,7 +615,6 @@ function PageContent() {
     setQueue(prev =>
       prev.map(item => (item.id === pending.id ? { ...item, status: "running" as const, modelId: usedModelId } : item))
     )
-    setCopyStatus("idle")
 
     try {
       if (usedProvider === "local") {
@@ -906,24 +941,10 @@ function PageContent() {
     [cancel, queue]
   )
 
-  const handleCopy = useCallback(async (output: string) => {
-    if (!output) return
-    try {
-      await navigator.clipboard.writeText(output)
-      setCopyStatus("success")
-      setTimeout(() => setCopyStatus("idle"), 2000)
-    } catch (error) {
-      console.warn("Copy failed", error)
-      setCopyStatus("error")
-      setTimeout(() => setCopyStatus("idle"), 2500)
-    }
-  }, [])
-
   const handleDelete = useCallback(
     (itemId: string) => {
       deleteResultFromStorage(itemId)
       setQueue(prev => prev.filter(q => q.id !== itemId))
-      setCopyStatus("idle")
       // If the deleted item was expanded, clear the expanded state
       if (expandedItemId === itemId) {
         setExpandedItemId(null)
@@ -1275,10 +1296,8 @@ function PageContent() {
                 key={item.id}
                 item={item}
                 isExpanded={expandedItemId === item.id}
-                copyStatus={copyStatus}
                 onToggleExpanded={() => toggleExpanded(item.id)}
                 onCancel={() => handleCancel(item.id)}
-                onCopy={handleCopy}
                 onDelete={() => handleDelete(item.id)}
                 onDownloadPDF={() => handleDownloadPDF(item)}
                 onDownloadDOCX={() => handleDownloadDOCX(item)}
