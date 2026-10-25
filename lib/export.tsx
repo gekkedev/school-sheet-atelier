@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx"
+import { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType } from "docx"
 import { pdf } from "@react-pdf/renderer"
 import { saveAs } from "file-saver"
 import { PDFDocumentContent } from "@/components/pdf-preview"
@@ -14,6 +14,7 @@ type TextSegment = {
 }
 
 type ContentElement =
+  | { type: "image"; source: string; alt: string }
   | { type: "h1"; segments: TextSegment[] }
   | { type: "h2"; segments: TextSegment[] }
   | { type: "h3"; segments: TextSegment[] }
@@ -71,8 +72,12 @@ function parseMarkdownToElements(markdown: string): ContentElement[] {
     } else if (token.type === "paragraph_open") {
       const inlineToken = tokens[i + 1]
       if (inlineToken && inlineToken.children) {
-        const segments = parseInlineTokens(inlineToken.children)
-        elements.push({ type: "paragraph", segments })
+        const images = inlineToken.children.filter(
+          child => child.type === "image" && /^data:image\/(png|jpeg);base64,/.test(child.attrGet("src") ?? "")
+        )
+        for (const image of images) elements.push({ type: "image", source: image.attrGet("src")!, alt: image.content })
+        const segments = parseInlineTokens(inlineToken.children.filter(child => child.type !== "image"))
+        if (segments.length) elements.push({ type: "paragraph", segments })
       }
       i += 2
     } else if (token.type === "bullet_list_open" || token.type === "ordered_list_open") {
@@ -119,8 +124,22 @@ function createTextRuns(segments: TextSegment[]): TextRun[] {
 }
 
 function createDocxParagraphs(elements: ContentElement[]): Paragraph[] {
+  let imageCount = 0
   return elements.map(element => {
     switch (element.type) {
+      case "image":
+        return new Paragraph({
+          pageBreakBefore: imageCount++ > 0 && imageCount % 2 === 1,
+          children: [
+            new ImageRun({
+              type: element.source.startsWith("data:image/jpeg") ? "jpg" : "png",
+              data: Uint8Array.from(atob(element.source.split(",")[1]), char => char.charCodeAt(0)),
+              transformation: { width: 180, height: 180 },
+              altText: { title: element.alt, description: element.alt, name: "Illustration" }
+            })
+          ],
+          spacing: { after: 120 }
+        })
       case "h1":
         return new Paragraph({
           children: createTextRuns(element.segments),
@@ -166,17 +185,7 @@ export async function exportToPDF(content: string, title: string, filename: stri
 
 export async function exportToDOCX(content: string, title: string, filename: string) {
   try {
-    const elements = parseMarkdownToElements(content)
-    const paragraphs = createDocxParagraphs(elements)
-
-    const doc = new Document({
-      sections: [
-        {
-          properties: {},
-          children: paragraphs
-        }
-      ]
-    })
+    const doc = createDOCXDocument(content)
 
     const blob = await Packer.toBlob(doc)
     saveAs(blob, filename)
@@ -184,4 +193,18 @@ export async function exportToDOCX(content: string, title: string, filename: str
     console.error("DOCX export failed:", error)
     throw new Error("DOCX-Export fehlgeschlagen")
   }
+}
+
+export function createDOCXDocument(content: string) {
+  const elements = parseMarkdownToElements(content)
+  const paragraphs = createDocxParagraphs(elements)
+
+  return new Document({
+    sections: [
+      {
+        properties: {},
+        children: paragraphs
+      }
+    ]
+  })
 }

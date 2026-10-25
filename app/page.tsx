@@ -18,6 +18,15 @@ import { formatEuroCents, generateWithOpenRouter } from "@/lib/openrouter"
 import { generateStationLearning } from "@/lib/station-learning"
 import { generateSelfStudyWorkbook } from "@/lib/self-study-workbook"
 
+import {
+  DEFAULT_ILLUSTRATIONS,
+  ILLUSTRATION_STYLES,
+  fillIllustrations,
+  generateIllustration,
+  illustrationInstruction,
+  type IllustrationPreferences
+} from "@/lib/illustrations"
+
 type GradeFilter = Grade | "Alle"
 
 type GenerationStatus = "pending" | "running" | "success" | "error" | "cancelled"
@@ -29,8 +38,10 @@ type GenerationItem = {
   grade: Grade
   subjectId: SubjectId
   modelId: string | null
+  imageModelId?: string
   provider?: AiProvider
   totalCostEuroCents?: number
+  illustrations?: IllustrationPreferences
   temperature?: number
   output: string
   error: string | null
@@ -44,6 +55,7 @@ type StoredResult = {
   topic: Topic
   grade: Grade
   modelId: string | null
+  imageModelId?: string
   provider?: AiProvider
   totalCostEuroCents?: number
   output: string
@@ -76,7 +88,7 @@ interface QueueItemProps {
   onCancel: () => void
   onCopy: (output: string) => void
   onDelete: () => void
-  onModelClick: (modelId: string, provider: AiProvider) => void
+  onModelClick: (modelId: string, provider: AiProvider, image?: boolean) => void
   onDownloadPDF: () => void
   onDownloadDOCX: () => void
 }
@@ -141,7 +153,7 @@ const QueueItem = memo(function QueueItem({
           {creationDate && <span className="text-xs text-muted">Erstellt: {creationDate}</span>}
           {item.modelId && (
             <span className="text-xs text-muted">
-              Modell:{" "}
+              Textmodell:{" "}
               <span
                 onClick={e => {
                   e.stopPropagation()
@@ -150,6 +162,20 @@ const QueueItem = memo(function QueueItem({
                 className="cursor-pointer hover:text-ink-soft hover:underline"
               >
                 {MODEL_LABELS[item.modelId] ?? item.modelId}
+              </span>
+            </span>
+          )}
+          {item.imageModelId && (
+            <span className="text-xs text-muted">
+              Bildmodell:{" "}
+              <span
+                onClick={e => {
+                  e.stopPropagation()
+                  onModelClick(item.imageModelId!, "openrouter", true)
+                }}
+                className="cursor-pointer hover:text-ink-soft hover:underline"
+              >
+                {item.imageModelId}
               </span>
             </span>
           )}
@@ -315,6 +341,7 @@ export default function Home() {
 }
 
 function PageContent() {
+  const [illustrations, setIllustrations] = useState<IllustrationPreferences>(DEFAULT_ILLUSTRATIONS)
   const [uiTheme, setUiTheme] = useState<"blackboard" | "atelier">("blackboard")
   const [activeSubjectId, setActiveSubjectId] = useState<SubjectId>("deutsch")
   const [activeGrade, setActiveGrade] = useState<GradeFilter>("Alle")
@@ -434,6 +461,7 @@ function PageContent() {
         modelId: provider === "openrouter" ? openRouterModel || null : null,
         provider,
         temperature,
+        illustrations: provider === "openrouter" ? { ...illustrations } : undefined,
         output: "",
         error: null,
         timestamp: Date.now(),
@@ -444,7 +472,7 @@ function PageContent() {
       // Expand the newly added item
       setExpandedItemId(newItem.id)
     },
-    [activeSubject.id, determineGrade, selectedDocumentType, provider, openRouterModel, temperature]
+    [activeSubject.id, determineGrade, selectedDocumentType, provider, openRouterModel, temperature, illustrations]
   )
 
   const handleCustomTopicSubmit = useCallback(
@@ -472,10 +500,12 @@ function PageContent() {
     activeJob.current = { id: pending.id, controller }
 
     const usedProvider = pending.provider ?? "local"
+    const jobIllustrations = usedProvider === "openrouter" ? pending.illustrations : undefined
     let usedModelId = usedProvider === "openrouter" ? pending.modelId : (getCurrentModelId() ?? activeModelId ?? null)
+    let usedImageModelId = pending.imageModelId
     // A browser reload can resume an interrupted draft; retain costs from calls already completed.
     let totalCostEuroCents: number | undefined =
-      usedProvider === "openrouter" ? (pending.totalCostEuroCents ?? 0) : undefined
+      pending.totalCostEuroCents ?? (usedProvider === "openrouter" ? 0 : undefined)
     let latestOutput = pending.output
 
     const addCost = (response: { costEuroCents?: number }) => {
@@ -501,11 +531,13 @@ function PageContent() {
       }
 
       const docType = getDocumentType(pending.documentType ?? "worksheet")
-      const maxTokens = 2048
+      // Cloud reasoning and the complete JSON document share the output budget.
+      const maxTokens = usedProvider === "openrouter" ? 8192 : 2048
 
       const systemPrompt = [
         "Du bist eine Grundschul-Fachautor*in. Du erstellst altersgerechte Unterrichtsmaterialien, die exakt zur angegebenen Klassenstufe passen.",
         docType.systemPromptAddition,
+        illustrationInstruction(jobIllustrations),
         "WICHTIG: Du antwortest IMMER und AUSSCHLIESSLICH auf Deutsch. Alle Materialien, Aufgaben, Lösungen und Erklärungen müssen komplett in deutscher Sprache verfasst sein.",
         "Gib ausschließlich ein gültiges JSON-Objekt zurück, ohne Markdown-Codeblock oder Begleittext. Prüfe vor der Ausgabe Grammatik, Lösungen, Punkte und die Zuordnung der Lösungen zu den Aufgaben."
       ].join(" ")
@@ -555,6 +587,14 @@ function PageContent() {
             )
           },
           generate: async request => {
+            request = {
+              ...request,
+              messages: request.messages.map(message =>
+                message.role === "system"
+                  ? { ...message, content: message.content + "\n" + illustrationInstruction(jobIllustrations) }
+                  : message
+              )
+            }
             const response =
               usedProvider === "openrouter"
                 ? await generateWithOpenRouter({
@@ -637,6 +677,7 @@ function PageContent() {
                 .join("\n\n")
             }
           ]
+          const repairMaxTokens = usedProvider === "openrouter" && response.truncated ? maxTokens * 2 : maxTokens
           const repair =
             usedProvider === "openrouter"
               ? await generateWithOpenRouter({
@@ -644,14 +685,14 @@ function PageContent() {
                   model: usedModelId!,
                   messages: repairMessages,
                   temperature: 0,
-                  maxTokens
+                  maxTokens: repairMaxTokens
                 })
-              : await generate({ messages: repairMessages, temperature: 0, maxTokens })
+              : await generate({ messages: repairMessages, temperature: 0, maxTokens: repairMaxTokens })
           latestOutput = repair.text.trim()
           if ("costEuroCents" in repair) addCost(repair)
           if (repair.truncated) {
             throw new Error(
-              `Die Reparatur wurde nach ${maxTokens ?? 2048} Tokens abgeschnitten. Bitte erstelle ein kürzeres Material oder teile das Thema auf.`
+              `Auch der erneute Versuch hat das Ausgabelimit von ${repairMaxTokens} Tokens erreicht. Das Dokument konnte nicht vollständig erstellt werden. Bitte versuche es erneut oder teile das Material auf.`
             )
           }
           parsed = parseGeneratedDocument(repair.text.trim(), expectedDocument)
@@ -662,6 +703,34 @@ function PageContent() {
         }
 
         finalOutput = generatedDocumentToMarkdown(parsed.document)
+      }
+      latestOutput = finalOutput
+      if (jobIllustrations?.enabled) {
+        if (!openRouterToken || !jobIllustrations.model)
+          throw new Error("Bitte einen OpenRouter-Token und ein Bildmodell auswählen.")
+        finalOutput = await fillIllustrations(
+          finalOutput,
+          async description => {
+            controller.signal.throwIfAborted()
+            const result = await generateIllustration({
+              token: openRouterToken,
+              model: jobIllustrations.model,
+              style: ILLUSTRATION_STYLES[jobIllustrations.style],
+              prompt: description,
+              signal: controller.signal,
+              onCost: costEuroCents => addCost({ costEuroCents })
+            })
+            usedImageModelId = jobIllustrations.model
+            setQueue(prev =>
+              prev.map(item => (item.id === pending.id ? { ...item, imageModelId: usedImageModelId } : item))
+            )
+            return result.source
+          },
+          output => {
+            latestOutput = output
+            setQueue(prev => prev.map(item => (item.id === pending.id ? { ...item, output } : item)))
+          }
+        )
       }
       controller.signal.throwIfAborted()
       latestOutput = finalOutput
@@ -674,6 +743,7 @@ function PageContent() {
           topic: pending.topic,
           grade: pending.grade,
           modelId: usedModelId,
+          imageModelId: usedImageModelId,
           provider: usedProvider,
           totalCostEuroCents,
           output: finalOutput,
@@ -691,6 +761,7 @@ function PageContent() {
                 status: "success" as const,
                 output: finalOutput,
                 modelId: usedModelId,
+                imageModelId: usedImageModelId,
                 provider: usedProvider,
                 totalCostEuroCents
               }
@@ -707,6 +778,7 @@ function PageContent() {
         topic: pending.topic,
         grade: pending.grade,
         modelId: usedModelId,
+        imageModelId: usedImageModelId,
         provider: usedProvider,
         totalCostEuroCents,
         output: latestOutput,
@@ -724,6 +796,7 @@ function PageContent() {
                 error: message,
                 output: latestOutput,
                 modelId: usedModelId,
+                imageModelId: usedImageModelId,
                 provider: usedProvider,
                 totalCostEuroCents
               }
@@ -734,8 +807,8 @@ function PageContent() {
       activeJob.current = null
       if (usedProvider === "openrouter") {
         setOpenRouterGenerating(false)
-        setOpenRouterUsageRefresh(value => value + 1)
       }
+      if (usedProvider === "openrouter") setOpenRouterUsageRefresh(value => value + 1)
     }
   }, [
     queue,
@@ -823,7 +896,8 @@ function PageContent() {
 
   const isEngineBusy = engineStatus === "initializing" || engineStatus === "checking"
   const generationUnavailable =
-    provider === "local" ? isEngineBusy || !webgpu.supported : !openRouterToken || !openRouterModel
+    (provider === "openrouter" && illustrations.enabled && (!openRouterToken || !illustrations.model)) ||
+    (provider === "local" ? isEngineBusy || !webgpu.supported : !openRouterToken || !openRouterModel)
 
   if (!hydrated) {
     // Render a static placeholder during SSR
@@ -888,6 +962,8 @@ function PageContent() {
               onModelChange={handleOpenRouterModelChange}
               onTokenChange={handleOpenRouterTokenChange}
               usageRefresh={openRouterUsageRefresh}
+              illustrations={illustrations}
+              onIllustrationsChange={setIllustrations}
             />
 
             {provider === "local" && (
@@ -1138,9 +1214,10 @@ function PageContent() {
                 onDelete={() => handleDelete(item.id)}
                 onDownloadPDF={() => handleDownloadPDF(item)}
                 onDownloadDOCX={() => handleDownloadDOCX(item)}
-                onModelClick={(modelId, itemProvider) => {
+                onModelClick={(modelId, itemProvider, image) => {
                   setProvider(itemProvider)
-                  if (itemProvider === "openrouter") setOpenRouterModel(modelId)
+                  if (image) setIllustrations(prev => ({ ...prev, enabled: true, model: modelId }))
+                  else if (itemProvider === "openrouter") setOpenRouterModel(modelId)
                   else setSelectedModelId(modelId)
                   const settings = document.querySelector<HTMLDetailsElement>("[data-ai-settings]")
                   if (settings) {

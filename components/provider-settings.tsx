@@ -14,9 +14,18 @@ import {
   OPENROUTER_MODEL_KEY,
   OPENROUTER_TOKEN_KEY,
   openRouterLimitPercent,
+  USD_TO_EUR,
   type OpenRouterKeyInfo,
   type OpenRouterModel
 } from "@/lib/openrouter"
+
+import {
+  ILLUSTRATION_KEY,
+  ILLUSTRATION_STYLES,
+  fetchIllustrationModels,
+  imageEuroCents,
+  type IllustrationPreferences
+} from "@/lib/illustrations"
 
 export type AiProvider = "local" | "openrouter"
 
@@ -26,15 +35,32 @@ export function ProviderSettings({
   selectedModel,
   onModelChange,
   onTokenChange,
-  usageRefresh
+  usageRefresh,
+  illustrations,
+  onIllustrationsChange
 }: {
   provider: AiProvider
   onProviderChange: (provider: AiProvider) => void
   selectedModel: string
   onModelChange: (model: string) => void
   onTokenChange: (token: string) => void
+  illustrations: IllustrationPreferences
+  onIllustrationsChange: (value: IllustrationPreferences) => void
   usageRefresh: number
 }) {
+  const [imageModels, setImageModels] = useState<OpenRouterModel[]>([])
+  const [loadingDots, setLoadingDots] = useState(1)
+  const imagePricesLoading = imageModels.some(model => model.pricing.image === "loading")
+  useEffect(() => {
+    if (!imagePricesLoading) return
+    const timer = setInterval(() => setLoadingDots(dots => (dots % 3) + 1), 500)
+    return () => clearInterval(timer)
+  }, [imagePricesLoading])
+  const imagePriceLabel = (model: OpenRouterModel, multiplier = 1) =>
+    model.pricing.image === "loading"
+      ? `loading${".".repeat(loadingDots)}`
+      : formatEuroCents(imageEuroCents(model) * multiplier)
+  const [illustrationsReady, setIllustrationsReady] = useState(false)
   const [token, setToken] = useState("")
   const [models, setModels] = useState<OpenRouterModel[]>([])
   const [freeOnly, setFreeOnly] = useState(false)
@@ -43,6 +69,41 @@ export function ProviderSettings({
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [keyInfo, setKeyInfo] = useState<OpenRouterKeyInfo | null>(null)
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(ILLUSTRATION_KEY) ?? "null")
+      if (
+        stored &&
+        typeof stored.enabled === "boolean" &&
+        typeof stored.model === "string" &&
+        Object.hasOwn(ILLUSTRATION_STYLES, stored.style)
+      )
+        onIllustrationsChange(stored)
+    } catch {
+      /* Invalid preferences retain defaults. */
+    }
+    setIllustrationsReady(true)
+  }, [onIllustrationsChange])
+  useEffect(() => {
+    if (illustrationsReady) localStorage.setItem(ILLUSTRATION_KEY, JSON.stringify(illustrations))
+  }, [illustrations, illustrationsReady])
+  useEffect(() => {
+    if (provider !== "openrouter" || token.length < 20) return
+    let active = true
+    fetchIllustrationModels(token, value => {
+      if (active) setImageModels(value)
+    })
+      .then(value => {
+        if (active) setImageModels(value)
+      })
+      .catch(error => {
+        if (active) setError(error.message)
+      })
+    return () => {
+      active = false
+    }
+  }, [provider, token])
 
   useEffect(() => {
     const storedToken = localStorage.getItem(OPENROUTER_TOKEN_KEY) ?? ""
@@ -98,6 +159,25 @@ export function ProviderSettings({
       ),
     [freeOnly, excludeChina, excludeMusk, models]
   )
+  // Models requiring input images can return here if generation later supplies reference images.
+  const visibleImageModels = imageModels.filter(
+    model =>
+      !model.imageInputRequired &&
+      (!freeOnly || isFreeOpenRouterModel(model)) &&
+      (!excludeChina || !isChinaAffiliatedOpenRouterModel(model)) &&
+      (!excludeMusk || !isMuskAffiliatedOpenRouterModel(model))
+  )
+  const imageInfo = visibleImageModels.find(model => model.id === illustrations.model)
+  useEffect(() => {
+    if (
+      illustrationsReady &&
+      imageModels.length &&
+      illustrations.model !== (visibleImageModels[0]?.id ?? "") &&
+      !visibleImageModels.some(model => model.id === illustrations.model)
+    )
+      onIllustrationsChange({ ...illustrations, model: visibleImageModels[0]?.id ?? "" })
+  }, [illustrationsReady, imageModels, freeOnly, excludeChina, excludeMusk, illustrations, onIllustrationsChange])
+  const illustrationCost = illustrations.enabled && imageInfo ? imageEuroCents(imageInfo) : 0
   const selectedModelInfo = models.find(model => model.id === selectedModel)
   const limitPercent = keyInfo ? openRouterLimitPercent(keyInfo) : null
   const limitRemainingUsd =
@@ -114,6 +194,7 @@ export function ProviderSettings({
     setToken(value)
     setKeyInfo(null)
     setModels([])
+    setImageModels([])
     setError("")
     onTokenChange(value)
     localStorage.setItem(OPENROUTER_TOKEN_KEY, value)
@@ -138,6 +219,38 @@ export function ProviderSettings({
             </button>
           ))}
         </div>
+        {provider === "openrouter" && (
+          <p className="text-xs text-muted">
+            Alle Modellpreise und Gesamtkosten in Euro-Cent (ct). Umrechnung: 1 USD ={" "}
+            {USD_TO_EUR.toLocaleString("de-DE")} EUR (fester Kurs). Unbekannte Preise: ??? ct.
+          </p>
+        )}
+        {provider === "openrouter" && (
+          <fieldset className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-muted p-4">
+            <legend className="px-2 font-semibold text-ink">Modellfilter</legend>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-muted">
+                <input type="checkbox" checked={freeOnly} onChange={event => setFreeOnly(event.target.checked)} />
+                Nur kostenlose
+              </label>
+              <label
+                className="flex items-center gap-1.5 text-xs text-muted"
+                title="Keine Modelle chinesischer Anbieter oder Marken anzeigen"
+              >
+                <input
+                  type="checkbox"
+                  checked={excludeChina}
+                  onChange={event => setExcludeChina(event.target.checked)}
+                />
+                🇨🇳 ausschließen
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-muted">
+                <input type="checkbox" checked={excludeMusk} onChange={event => setExcludeMusk(event.target.checked)} />
+                Musk ausschließen
+              </label>
+            </div>
+          </fieldset>
+        )}
         {provider === "openrouter" && (
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -195,56 +308,34 @@ export function ProviderSettings({
               )}
             </label>
             <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <label htmlFor="openrouter-model" className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Modell
-                </label>
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-1.5 text-xs text-muted">
-                    <input type="checkbox" checked={freeOnly} onChange={event => setFreeOnly(event.target.checked)} />
-                    Nur kostenlose
-                  </label>
-                  <label
-                    className="flex items-center gap-1.5 text-xs text-muted"
-                    title="Keine Modelle chinesischer Anbieter oder Marken anzeigen"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={excludeChina}
-                      onChange={event => setExcludeChina(event.target.checked)}
-                    />
-                    🇨🇳 ausschließen
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-muted">
-                    <input
-                      type="checkbox"
-                      checked={excludeMusk}
-                      onChange={event => setExcludeMusk(event.target.checked)}
-                    />
-                    Musk ausschließen
-                  </label>
-                </div>
-              </div>
-              <select
-                id="openrouter-model"
-                value={visibleModels.some(model => model.id === selectedModel) ? selectedModel : ""}
-                onChange={event => onModelChange(event.target.value)}
-                disabled={!token || loading}
-                className="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-surface-muted"
-              >
-                <option value="">{loading ? "Modelle werden geladen…" : "Modell auswählen"}</option>
-                {visibleModels.map(model => (
-                  <option key={model.id} value={model.id}>
-                    {model.name} ·{" "}
-                    {isFreeOpenRouterModel(model)
-                      ? "kostenlos"
-                      : `≈ ${formatEuroCents(estimateEuroCentsPerPage(model))}/Seite`}
-                  </option>
-                ))}
-              </select>
-              {selectedModelInfo && (
+              <label htmlFor="openrouter-model" className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Textmodell
+              </label>
+              {provider === "openrouter" && (
+                <select
+                  id="openrouter-model"
+                  value={visibleModels.some(model => model.id === selectedModel) ? selectedModel : ""}
+                  onChange={event => onModelChange(event.target.value)}
+                  disabled={!token || loading}
+                  className="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-surface-muted"
+                >
+                  <option value="">{loading ? "Modelle werden geladen…" : "Modell auswählen"}</option>
+                  {visibleModels.map(model => (
+                    <option key={model.id} value={model.id}>
+                      {model.name} ·{" "}
+                      {isFreeOpenRouterModel(model)
+                        ? "kostenlos"
+                        : `≈ ${formatEuroCents(estimateEuroCentsPerPage(model))}/Seite`}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {provider === "openrouter" && selectedModelInfo && (
                 <span className="text-sm font-semibold text-ink-soft">
-                  Geschätzte Kosten pro Seite: {formatEuroCents(estimateEuroCentsPerPage(selectedModelInfo))}
+                  Geschätzte Gesamtkosten pro Seite:{" "}
+                  {illustrations.enabled && !imageInfo
+                    ? "??? ct"
+                    : formatEuroCents(estimateEuroCentsPerPage(selectedModelInfo) + illustrationCost)}
                 </span>
               )}
               <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -252,11 +343,120 @@ export function ProviderSettings({
                 eingesehen werden. Dafür gibt es hier derzeit noch keinen Filter.
               </span>
               {error && <span className="text-sm text-rose-600">{error}</span>}
-              {freeOnly && visibleModels.length === 0 && !loading && (
+              {provider === "openrouter" && freeOnly && visibleModels.length === 0 && !loading && (
                 <span className="text-sm text-amber-700">Keine kostenlosen Modelle gefunden.</span>
               )}
             </div>
           </div>
+        )}
+        {provider === "openrouter" && (
+          <fieldset className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-muted p-4">
+            <legend className="px-2 font-semibold text-ink">Illustrationen</legend>
+            <p className="text-xs text-muted">
+              Bildpreise sind Schätzungen für ein Bild mit 1024 × 1024 Pixeln (bei GPT Image 1: mittlere Qualität).
+              Anbieter, Auflösung, Qualität, und Wetter können den tatsächlichen Preis ändern.
+            </p>
+            <label className="flex w-fit items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={illustrations.enabled}
+                onChange={event => onIllustrationsChange({ ...illustrations, enabled: event.target.checked })}
+              />
+              Illustrationen hinzufügen
+            </label>
+            <div className={`grid gap-3 md:grid-cols-2 ${!illustrations.enabled ? "opacity-50" : ""}`}>
+              <label className="flex flex-col gap-2 text-sm text-ink">
+                Bildmodell (günstigste zuerst)
+                <select
+                  disabled={!illustrations.enabled || !token || !visibleImageModels.length}
+                  value={imageInfo ? illustrations.model : ""}
+                  onChange={event => onIllustrationsChange({ ...illustrations, model: event.target.value })}
+                  className="rounded-xl border border-line bg-surface p-3 disabled:cursor-not-allowed"
+                >
+                  <option value="">Bildmodell auswählen</option>
+                  {visibleImageModels.map(model => (
+                    <option key={model.id} value={model.id} title={model.imagePriceNote}>
+                      {model.name} · {Number.isFinite(imageEuroCents(model)) ? "≈ " : ""}
+                      {imagePriceLabel(model)}/Bild
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-sm text-ink">
+                Bevorzugter Stil
+                <select
+                  disabled={!illustrations.enabled}
+                  value={illustrations.style}
+                  onChange={event =>
+                    onIllustrationsChange({
+                      ...illustrations,
+                      style: event.target.value as IllustrationPreferences["style"]
+                    })
+                  }
+                  className="rounded-xl border border-line bg-surface p-3 disabled:cursor-not-allowed"
+                >
+                  {Object.entries(ILLUSTRATION_STYLES).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div
+              className={`grid grid-cols-2 gap-2 sm:grid-cols-5 ${!illustrations.enabled ? "opacity-50" : ""}`}
+              aria-label="Stilbeispiele"
+            >
+              {Object.entries(ILLUSTRATION_STYLES).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={!illustrations.enabled}
+                  aria-label={label}
+                  aria-pressed={illustrations.style === id}
+                  onClick={() =>
+                    onIllustrationsChange({ ...illustrations, style: id as IllustrationPreferences["style"] })
+                  }
+                  className={`min-w-0 cursor-pointer rounded-xl border p-2 transition enabled:hover:border-accent enabled:hover:bg-settings focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed ${illustrations.style === id ? "border-accent" : "border-line"}`}
+                >
+                  <img
+                    src={`${process.env.NODE_ENV === "production" ? (process.env.NEXT_PUBLIC_BASE_PATH ?? "") : ""}/illustration-styles/${id}.webp`}
+                    alt={`${label}: Ein Kind pflanzt einen Setzling in einen Blumentopf`}
+                    width={192}
+                    height={192}
+                    loading="lazy"
+                    className="aspect-square w-full rounded-lg bg-white object-contain"
+                  />
+                  <span className="mt-2 block text-center text-xs text-ink">{label}</span>
+                </button>
+              ))}
+            </div>
+            {error && (
+              <p role="alert" className="text-sm text-rose-600">
+                {error}
+              </p>
+            )}
+            <p className="text-xs text-muted">
+              Sparsamkeit: Verbraucht voraussichtlich 1 Bild pro Seite, höchstens 2. Beim Export beginnt spätestens nach
+              2 Bildern eine neue Seite. Der Textgenerator entscheidet über Menge und Platzierung der Bilder. Die
+              Modellfilter gelten auch für Bilder.
+            </p>
+            {illustrations.enabled && !visibleImageModels.length && (
+              <p className="text-sm text-amber-700">
+                Keine passenden Bildmodelle verfügbar. OpenRouter-Token eingeben oder Filter anpassen.
+              </p>
+            )}
+            {illustrations.enabled && imageInfo?.imagePriceNote && (
+              <p className="text-xs text-muted">{imageInfo.imagePriceNote}</p>
+            )}
+            {illustrations.enabled && imageInfo && (
+              <p className="text-xs text-muted">
+                Geschätzte Bildkosten pro Seite (bei einem Bild): {imagePriceLabel(imageInfo)}; höchstens{" "}
+                {imagePriceLabel(imageInfo, 2)} (für 2). Auch 0 Bilder sind möglich. Diese Kosten fallen zusätzlich zu
+                den Textkosten an.
+              </p>
+            )}
+          </fieldset>
         )}
       </div>
     </section>

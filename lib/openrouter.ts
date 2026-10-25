@@ -1,12 +1,16 @@
 export const OPENROUTER_TOKEN_KEY = "schoolsheet-atelier-openrouter-token"
 export const AI_PROVIDER_KEY = "schoolsheet-atelier-ai-provider"
 export const OPENROUTER_MODEL_KEY = "schoolsheet-atelier-openrouter-model"
+// Single exchange-rate source for every price estimate, billed cost, and currency label.
 export const USD_TO_EUR = 0.92
 
 export type OpenRouterModel = {
   id: string
   name: string
-  pricing: { prompt: string; completion: string; request?: string }
+  imageInputRequired?: boolean
+  imagePriceNote?: string
+  supported_parameters?: { input_references?: { min?: number } }
+  pricing: { prompt: string; completion: string; request?: string; image?: string }
   architecture?: {
     input_modalities?: string[]
     output_modalities?: string[]
@@ -27,9 +31,12 @@ export function openRouterLimitPercent(info: OpenRouterKeyInfo): number | null {
 }
 
 export function isFreeOpenRouterModel(model: OpenRouterModel): boolean {
-  return [model.pricing.prompt, model.pricing.completion, model.pricing.request ?? "0"].every(
-    value => Number(value) === 0
-  )
+  return [
+    model.pricing.prompt,
+    model.pricing.completion,
+    model.pricing.request ?? "0",
+    model.pricing.image ?? "0"
+  ].every(value => Number(value) === 0)
 }
 
 export function isTextOnlyOpenRouterModel(model: OpenRouterModel): boolean {
@@ -114,7 +121,11 @@ export function estimateEuroCentsPerPage(model: OpenRouterModel): number {
 }
 
 export function formatEuroCents(value: number): string {
-  return `${value.toLocaleString("de-DE", { minimumFractionDigits: value > 0 && value < 0.01 ? 3 : 2, maximumFractionDigits: 3 })} ct`
+  if (!Number.isFinite(value)) return "??? ct"
+  return `${value.toLocaleString(
+    "de-DE",
+    value !== 0 && Math.abs(value) < 0.05 ? { maximumSignificantDigits: 1 } : { maximumFractionDigits: 1 }
+  )} ct`
 }
 
 export function formatUsdAsEuro(value: number): string {

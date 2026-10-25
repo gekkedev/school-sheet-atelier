@@ -1,0 +1,65 @@
+[
+  {
+    "model": "microsoft/mai-image-2.5",
+    "sampledAt": "2026-10-24T22:27:34.890Z",
+    "parameters": {
+      "n": 1,
+      "aspect_ratio": "1:1"
+    },
+    "width": 1024,
+    "height": 1024,
+    "prompt": "A simple black outline illustration of one apple with one leaf, centered on a plain white background. Primary school worksheet. No text, no border, no shading.",
+    "usage": {
+      "cost": 0.048288,
+      "prompt_tokens": 32,
+      "completion_tokens": 1024,
+      "total_tokens": 1056,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 1024
+      }
+    }
+  },
+  {
+    "model": "microsoft/mai-image-2.6-flash",
+    "sampledAt": "2026-10-24T22:27:42.306Z",
+    "parameters": {
+      "n": 1,
+      "aspect_ratio": "1:1"
+    },
+    "width": 1024,
+    "height": 1024,
+    "prompt": "A simple black outline illustration of one apple with one leaf, centered on a plain white background. Primary school worksheet. No text, no border, no shading.",
+    "usage": {
+      "cost": 0.01951025,
+      "prompt_tokens": 31,
+      "completion_tokens": 1024,
+      "total_tokens": 1055,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 1024
+      }
+    }
+  },
+  {
+    "model": "microsoft/mai-image-2.6",
+    "sampledAt": "2026-10-24T22:28:07.731Z",
+    "parameters": {
+      "n": 1,
+      "aspect_ratio": "1:1"
+    },
+    "width": 1024,
+    "height": 1024,
+    "prompt": "A simple black outline illustration of one apple with one leaf, centered on a plain white background. Primary school worksheet. No text, no border, no shading.",
+    "usage": {
+      "cost": 0.039067,
+      "prompt_tokens": 31,
+      "completion_tokens": 1024,
+      "total_tokens": 1055,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 1024
+      }
+    }
+  }
+]

@@ -1,0 +1,598 @@
+{
+  "checkedOn": "2026-10-25",
+  "source": "https://openrouter.ai/api/v1/images/models",
+  "models": [
+    {
+      "id": "meta/muse-image",
+      "name": "Meta: Muse Image",
+      "supported_parameters": {},
+      "pricing": {
+        "prompt": "0",
+        "completion": "0",
+        "image_token": "0.00000239520958083832",
+        "image_output": "0.00000239520958083832"
+      },
+      "endpoints": []
+    },
+    {
+      "id": "krea/k3-edit",
+      "name": "Krea: K3 Edit",
+      "supported_parameters": {
+        "resolution": {
+          "type": "enum",
+          "values": ["1K", "2K"]
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+        },
+        "input_references": {
+          "type": "range",
+          "min": 1,
+          "max": 8
+        },
+        "seed": {
+          "type": "boolean"
+        }
+      },
+      "pricing": {
+        "prompt": "0",
+        "completion": "0",
+        "image": "0.02",
+        "image_token": "0.0000143712574850299",
+        "image_output": "0.0000143712574850299"
+      },
+      "endpoints": [
+        {
+          "provider_name": "Krea",
+          "provider_slug": "krea",
+          "provider_tag": "krea",
+          "supported_parameters": {
+            "resolution": {
+              "type": "enum",
+              "values": ["1K", "2K"]
+            },
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+            },
+            "input_references": {
+              "type": "range",
+              "min": 1,
+              "max": 8
+            },
+            "seed": {
+              "type": "boolean"
+            }
+          },
+          "allowed_passthrough_parameters": ["preserve_references", "skip_prompt_expansion", "thinking_mode"],
+          "supports_streaming": false,
+          "pricing": []
+        }
+      ]
+    },
+    {
+      "id": "krea/krea-2-large",
+      "name": "Krea: Krea 2 Large",
+      "supported_parameters": {
+        "resolution": {
+          "type": "enum",
+          "values": ["1K"]
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+        },
+        "input_references": {
+          "type": "range",
+          "min": 0,
+          "max": 1
+        },
+        "seed": {
+          "type": "boolean"
+        }
+      },
+      "pricing": {
+        "prompt": "0",
+        "completion": "0",
+        "image_token": "0.0000143712574850299",
+        "image_output": "0.0000143712574850299"
+      },
+      "endpoints": [
+        {
+          "provider_name": "Krea",
+          "provider_slug": "krea",
+          "provider_tag": "krea",
+          "supported_parameters": {
+            "resolution": {
+              "type": "enum",
+              "values": ["1K"]
+            },
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+            },
+            "input_references": {
+              "type": "range",
+              "min": 0,
+              "max": 1
+            },
+            "seed": {
+              "type": "boolean"
+            }
+          },
+          "allowed_passthrough_parameters": [
+            "image_style_references",
+            "moodboards",
+            "styles",
+            "creativity",
+            "intensity",
+            "complexity",
+            "movement",
+            "strength"
+          ],
+          "supports_streaming": false,
+          "pricing": []
+        }
+      ]
+    },
+    {
+      "id": "krea/krea-2-medium",
+      "name": "Krea: Krea 2 Medium",
+      "supported_parameters": {
+        "resolution": {
+          "type": "enum",
+          "values": ["1K"]
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+        },
+        "input_references": {
+          "type": "range",
+          "min": 0,
+          "max": 1
+        },
+        "seed": {
+          "type": "boolean"
+        }
+      },
+      "pricing": {
+        "prompt": "0",
+        "completion": "0",
+        "image_token": "0.00000718562874251497",
+        "image_output": "0.00000718562874251497"
+      },
+      "endpoints": [
+        {
+          "provider_name": "Krea",
+          "provider_slug": "krea",
+          "provider_tag": "krea",
+          "supported_parameters": {
+            "resolution": {
+              "type": "enum",
+              "values": ["1K"]
+            },
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+            },
+            "input_references": {
+              "type": "range",
+              "min": 0,
+              "max": 1
+            },
+            "seed": {
+              "type": "boolean"
+            }
+          },
+          "allowed_passthrough_parameters": [
+            "image_style_references",
+            "moodboards",
+            "styles",
+            "creativity",
+            "intensity",
+            "complexity",
+            "movement",
+            "strength"
+          ],
+          "supports_streaming": false,
+          "pricing": []
+        }
+      ]
+    },
+    {
+      "id": "krea/krea-2-medium-turbo",
+      "name": "Krea: Krea 2 Medium Turbo",
+      "supported_parameters": {
+        "resolution": {
+          "type": "enum",
+          "values": ["1K"]
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+        },
+        "input_references": {
+          "type": "range",
+          "min": 0,
+          "max": 1
+        },
+        "seed": {
+          "type": "boolean"
+        }
+      },
+      "pricing": {
+        "prompt": "0",
+        "completion": "0",
+        "image_token": "0.00000359281437125749",
+        "image_output": "0.00000359281437125749"
+      },
+      "endpoints": [
+        {
+          "provider_name": "Krea",
+          "provider_slug": "krea",
+          "provider_tag": "krea",
+          "supported_parameters": {
+            "resolution": {
+              "type": "enum",
+              "values": ["1K"]
+            },
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "4:3", "3:2", "16:9", "4:5", "2:3", "9:16"]
+            },
+            "input_references": {
+              "type": "range",
+              "min": 0,
+              "max": 1
+            },
+            "seed": {
+              "type": "boolean"
+            }
+          },
+          "allowed_passthrough_parameters": [
+            "image_style_references",
+            "moodboards",
+            "styles",
+            "creativity",
+            "intensity",
+            "complexity",
+            "movement",
+            "strength"
+          ],
+          "supports_streaming": false,
+          "pricing": []
+        }
+      ]
+    },
+    {
+      "id": "openai/gpt-5.4-image-2",
+      "name": "OpenAI: GPT-5.4 Image 2",
+      "supported_parameters": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9", "auto"]
+        },
+        "quality": {
+          "type": "enum",
+          "values": ["auto", "low", "medium", "high"]
+        },
+        "background": {
+          "type": "enum",
+          "values": ["auto", "opaque"]
+        },
+        "n": {
+          "type": "range",
+          "min": 1,
+          "max": 10
+        },
+        "input_references": {
+          "type": "range",
+          "min": 0,
+          "max": 16
+        },
+        "output_compression": {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "pricing": {
+        "prompt": "0.000008",
+        "completion": "0.000015",
+        "image_output": "0.00003",
+        "web_search": "0.01",
+        "input_cache_read": "0.000002"
+      },
+      "endpoints": [
+        {
+          "provider_name": "OpenAI",
+          "provider_slug": "openai",
+          "provider_tag": "openai",
+          "supported_parameters": {
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9", "auto"]
+            },
+            "quality": {
+              "type": "enum",
+              "values": ["auto", "low", "medium", "high"]
+            },
+            "background": {
+              "type": "enum",
+              "values": ["auto", "opaque"]
+            },
+            "n": {
+              "type": "range",
+              "min": 1,
+              "max": 10
+            },
+            "input_references": {
+              "type": "range",
+              "min": 0,
+              "max": 16
+            },
+            "output_compression": {
+              "type": "range",
+              "min": 0,
+              "max": 100
+            }
+          },
+          "allowed_passthrough_parameters": ["moderation"],
+          "supports_streaming": true,
+          "pricing": [
+            {
+              "billable": "input_image",
+              "unit": "token",
+              "cost_usd": 8e-6
+            },
+            {
+              "billable": "output_image",
+              "unit": "token",
+              "cost_usd": 3e-5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sourceful/riverflow-v2-pro",
+      "name": "Sourceful: Riverflow V2 Pro",
+      "supported_parameters": {
+        "resolution": {
+          "type": "enum",
+          "values": ["1K", "2K", "4K"]
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16", "21:9", "auto"]
+        },
+        "n": {
+          "type": "range",
+          "min": 1,
+          "max": 1
+        },
+        "input_references": {
+          "type": "range",
+          "min": 0,
+          "max": 10
+        }
+      },
+      "pricing": {
+        "prompt": "0",
+        "completion": "0",
+        "image_token": "0.0000359281437125749",
+        "image_output": "0.0000359281437125749"
+      },
+      "endpoints": [
+        {
+          "provider_name": "Sourceful",
+          "provider_slug": "sourceful",
+          "provider_tag": "sourceful",
+          "supported_parameters": {
+            "resolution": {
+              "type": "enum",
+              "values": ["1K", "2K", "4K"]
+            },
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16", "21:9", "auto"]
+            },
+            "n": {
+              "type": "range",
+              "min": 1,
+              "max": 1
+            },
+            "input_references": {
+              "type": "range",
+              "min": 0,
+              "max": 10
+            }
+          },
+          "allowed_passthrough_parameters": ["font_inputs"],
+          "supports_streaming": false,
+          "pricing": [
+            {
+              "billable": "output_image",
+              "unit": "image",
+              "cost_usd": 0.15
+            },
+            {
+              "billable": "output_image",
+              "unit": "image",
+              "cost_usd": 0.15,
+              "variant": "2k"
+            },
+            {
+              "billable": "output_image",
+              "unit": "image",
+              "cost_usd": 0.33,
+              "variant": "4k"
+            },
+            {
+              "billable": "input_font",
+              "unit": "image",
+              "cost_usd": 0.03
+            },
+            {
+              "billable": "input_reference",
+              "unit": "image",
+              "cost_usd": 0.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sourceful/riverflow-v2-fast",
+      "name": "Sourceful: Riverflow V2 Fast",
+      "supported_parameters": {
+        "resolution": {
+          "type": "enum",
+          "values": ["1K", "2K", "4K"]
+        },
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16", "21:9", "auto"]
+        },
+        "n": {
+          "type": "range",
+          "min": 1,
+          "max": 1
+        },
+        "input_references": {
+          "type": "range",
+          "min": 0,
+          "max": 4
+        }
+      },
+      "pricing": {
+        "prompt": "0",
+        "completion": "0",
+        "image_token": "0.00000479041916167665",
+        "image_output": "0.00000479041916167665"
+      },
+      "endpoints": [
+        {
+          "provider_name": "Sourceful",
+          "provider_slug": "sourceful",
+          "provider_tag": "sourceful",
+          "supported_parameters": {
+            "resolution": {
+              "type": "enum",
+              "values": ["1K", "2K", "4K"]
+            },
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16", "21:9", "auto"]
+            },
+            "n": {
+              "type": "range",
+              "min": 1,
+              "max": 1
+            },
+            "input_references": {
+              "type": "range",
+              "min": 0,
+              "max": 4
+            }
+          },
+          "allowed_passthrough_parameters": ["font_inputs"],
+          "supports_streaming": false,
+          "pricing": [
+            {
+              "billable": "output_image",
+              "unit": "image",
+              "cost_usd": 0.02
+            },
+            {
+              "billable": "output_image",
+              "unit": "image",
+              "cost_usd": 0.04,
+              "variant": "2k"
+            },
+            {
+              "billable": "input_font",
+              "unit": "image",
+              "cost_usd": 0.03
+            },
+            {
+              "billable": "input_reference",
+              "unit": "image",
+              "cost_usd": 0.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "microsoft/mai-image-2.5-pro",
+      "name": "Microsoft AI: MAI-Image-2.5 Pro",
+      "supported_parameters": {
+        "aspect_ratio": {
+          "type": "enum",
+          "values": ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "auto"]
+        },
+        "n": {
+          "type": "range",
+          "min": 1,
+          "max": 1
+        },
+        "input_references": {
+          "type": "range",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "pricing": {
+        "prompt": "0.000005",
+        "completion": "0",
+        "image_token": "0.000108",
+        "image_output": "0.000108"
+      },
+      "endpoints": [
+        {
+          "provider_name": "Azure",
+          "provider_slug": "azure",
+          "provider_tag": "azure",
+          "supported_parameters": {
+            "aspect_ratio": {
+              "type": "enum",
+              "values": ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "auto"]
+            },
+            "n": {
+              "type": "range",
+              "min": 1,
+              "max": 1
+            },
+            "input_references": {
+              "type": "range",
+              "min": 0,
+              "max": 1
+            }
+          },
+          "allowed_passthrough_parameters": [],
+          "supports_streaming": false,
+          "pricing": [
+            {
+              "billable": "input_text",
+              "unit": "token",
+              "cost_usd": 5e-6
+            },
+            {
+              "billable": "input_image",
+              "unit": "token",
+              "cost_usd": 8e-6
+            },
+            {
+              "billable": "output_image",
+              "unit": "token",
+              "cost_usd": 0.000108
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

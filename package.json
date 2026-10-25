@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "test": "tsx scripts/check-generated-document.ts",
+    "test": "tsx scripts/check-generated-document.ts && tsx scripts/check-illustrations.ts",
     "check:pwa": "node scripts/check-pwa.mjs",
     "format": "prettier --write .",
     "postinstall": "pnpm format",

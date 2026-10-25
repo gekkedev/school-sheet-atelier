@@ -4,7 +4,9 @@ import { checkSelfStudyWorkbook } from "./check-self-study-workbook"
 import { getDocumentType } from "../data/document-types"
 import { generatedDocumentToMarkdown, parseGeneratedDocument } from "../lib/generated-document"
 import {
+  USD_TO_EUR,
   estimateEuroCentsPerPage,
+  formatEuroCents,
   formatUsdAsEuro,
   isChinaAffiliatedOpenRouterModel,
   isFreeOpenRouterModel,
@@ -14,6 +16,20 @@ import {
   readOpenRouterStream,
   rankOpenRouterModels
 } from "../lib/openrouter"
+
+for (const [value, expected] of [
+  [0, "0 ct"],
+  [2, "2 ct"],
+  [2.04, "2 ct"],
+  [2.15, "2,2 ct"],
+  [0.001, "0,001 ct"],
+  [0.024, "0,02 ct"],
+  [0.049, "0,05 ct"],
+  [0.05, "0,1 ct"],
+  [0.0000012, "0,000001 ct"],
+  [NaN, "??? ct"]
+] as const)
+  assert.equal(formatEuroCents(value), expected)
 
 const raw = JSON.stringify({
   docType: "worksheet",
@@ -104,11 +120,11 @@ const truncationCheck = readOpenRouterStream(truncatedStream, () => {}).then(res
   assert.equal(result.truncated, true)
 })
 assert.equal(estimateEuroCentsPerPage(free), 0)
-assert.ok(Math.abs(estimateEuroCentsPerPage(paid) - 0.23) < 1e-10)
+assert.ok(Math.abs(estimateEuroCentsPerPage(paid) - 0.0025 * USD_TO_EUR * 100) < 1e-10)
 assert.equal(openRouterLimitPercent({ limit: 10, limitRemaining: 2.5, usage: 99 }), 75)
 assert.equal(openRouterLimitPercent({ limit: 10, limitRemaining: 0, usage: 10 }), 100)
 assert.equal(openRouterLimitPercent({ limit: null, limitRemaining: null, usage: 10 }), null)
-assert.match(formatUsdAsEuro(10), /9,20/)
+assert.equal(formatUsdAsEuro(10), (10 * USD_TO_EUR).toLocaleString("de-DE", { style: "currency", currency: "EUR" }))
 assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "future-brand/deepseek-v9" }), true)
 assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "huawei/pangu-next" }), true)
 assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "xiaomi/mimo-next" }), true)

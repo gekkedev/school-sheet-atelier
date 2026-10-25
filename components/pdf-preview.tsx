@@ -1,6 +1,6 @@
 "use client"
 
-import { Document, Page, Text, View, StyleSheet, PDFViewer } from "@react-pdf/renderer"
+import { Document, Page, Text, View, StyleSheet, PDFViewer, Image } from "@react-pdf/renderer"
 import { useState, useEffect, memo } from "react"
 import MarkdownIt from "markdown-it"
 
@@ -81,6 +81,7 @@ type TextSegment = {
 }
 
 type ContentElement =
+  | { type: "image"; source: string; alt: string }
   | { type: "h1"; segments: TextSegment[] }
   | { type: "h2"; segments: TextSegment[] }
   | { type: "h3"; segments: TextSegment[] }
@@ -138,8 +139,12 @@ function parseMarkdownToElements(markdown: string): ContentElement[] {
     } else if (token.type === "paragraph_open") {
       const inlineToken = tokens[i + 1]
       if (inlineToken && inlineToken.children) {
-        const segments = parseInlineTokens(inlineToken.children)
-        elements.push({ type: "paragraph", segments })
+        const images = inlineToken.children.filter(
+          child => child.type === "image" && /^data:image\/(png|jpeg);base64,/.test(child.attrGet("src") ?? "")
+        )
+        for (const image of images) elements.push({ type: "image", source: image.attrGet("src")!, alt: image.content })
+        const segments = parseInlineTokens(inlineToken.children.filter(child => child.type !== "image"))
+        if (segments.length) elements.push({ type: "paragraph", segments })
       }
       i += 2
     } else if (token.type === "bullet_list_open" || token.type === "ordered_list_open") {
@@ -206,12 +211,24 @@ interface PDFDocumentProps {
 
 export function PDFDocumentContent({ content, title }: PDFDocumentProps) {
   const elements = parseMarkdownToElements(content)
+  let imageCount = 0
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {elements.map((element, index) => {
           switch (element.type) {
+            case "image":
+              return (
+                <View
+                  key={index}
+                  break={imageCount++ > 0 && imageCount % 2 === 1}
+                  wrap={false}
+                  style={{ marginBottom: 8 }}
+                >
+                  <Image src={element.source} style={{ width: 135, height: 135, objectFit: "contain" }} />
+                </View>
+              )
             case "h1":
               return (
                 <Text key={index} style={styles.title}>
