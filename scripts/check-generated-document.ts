@@ -129,6 +129,8 @@ assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "future-brand/deeps
 assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "huawei/pangu-next" }), true)
 assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "xiaomi/mimo-next" }), true)
 assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "meituan/longcat-next" }), true)
+assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "xingchen/model" }), true)
+assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "other/model", name: "Xingchen Model" }), true)
 assert.equal(isChinaAffiliatedOpenRouterModel({ ...free, id: "anthropic/claude" }), false)
 assert.equal(isMuskAffiliatedOpenRouterModel({ ...free, id: "x-ai/future-model" }), true)
 assert.equal(isMuskAffiliatedOpenRouterModel({ ...free, id: "someone/grok-next" }), true)

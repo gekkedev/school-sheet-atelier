@@ -104,7 +104,8 @@ export function isChinaAffiliatedOpenRouterModel(model: OpenRouterModel): boolea
     "stepfun",
     "01-ai",
     "xiaomi",
-    "meituan"
+    "meituan",
+    "xingchen"
   ].some(brand => identity.includes(brand))
 }
 
