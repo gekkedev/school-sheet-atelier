@@ -1,6 +1,6 @@
 # SchoolSheet-Atelier
 
-SchoolSheet-Atelier generates elementary school German and Religion exams, worksheets, and printable handouts entirely in the browser using WebGPU plus WebLLM. No server, no API keys. Runs locally on a regular laptop.
+SchoolSheet-Atelier generates elementary school German and Religion teaching materials. Choose local generation via WebGPU/WebLLM: no server, no API keys. Runs locally on a regular laptop. Alternatively, use cloud models via OpenRouter with your own API token, including optional illustrations.
 
 > Built with Next.js 16 (App Router, React 19) and configured for static site export for GitHub Pages.  
 > Deploys automatically on every push to `main`.
@@ -16,7 +16,8 @@ SchoolSheet-Atelier generates elementary school German and Religion exams, works
 - Multiple generation queue with status tracking and cancellation.
 - PDF preview and export using @react-pdf/renderer (DIN A4 layout).
 - DOCX export with docx library (compatible with Word, LibreOffice, OpenOffice).
-- Copy to clipboard functionality for generated content.
+- Copy generated Markdown or your custom input separately using the clipboard buttons.
+- View complete sent prompts, including retries and image requests, via **Prompts** in each new result.
 - Curated topic libraries for Deutsch and Religion with detailed focus areas and sample prompts.
 - Persistent storage of generated results in browser localStorage.
 
@@ -143,7 +144,7 @@ Curated lists for quick selection; extendable with custom topics.
 
 ## Privacy
 
-All generation happens locally in the browser. The model is downloaded once (about 1.4 GB for 3B int4), cached in IndexedDB, and reused offline.
+Local generation runs in your browser with cached models. When using OpenRouter, prompts are sent to OpenRouter and the selected model provider. Results and recorded prompts are stored in browser `localStorage`.
 
 ---
 
