@@ -31,7 +31,12 @@ type GradeFilter = Grade | "Alle"
 
 type GenerationStatus = "pending" | "running" | "success" | "error" | "cancelled"
 
+type PromptRequest = {
+  messages: Array<{ role: string; content: string }>
+}
+
 type GenerationItem = {
+  prompts?: PromptRequest[]
   id: string
   status: GenerationStatus
   topic: Topic
@@ -50,6 +55,7 @@ type GenerationItem = {
 }
 
 type StoredResult = {
+  prompts?: PromptRequest[]
   id: string
   timestamp: number
   topic: Topic
@@ -105,6 +111,7 @@ const QueueItem = memo(function QueueItem({
   onDownloadPDF,
   onDownloadDOCX
 }: QueueItemProps) {
+  const promptDialog = useRef<HTMLDialogElement>(null)
   const hasContent = item.output || (item.status === "error" && item.error)
   const creationDate = formatCreationDate(item.timestamp)
 
@@ -186,6 +193,16 @@ const QueueItem = memo(function QueueItem({
           )}
         </button>
         <div className="flex items-center gap-3">
+          {!!item.prompts?.length && (
+            <button
+              type="button"
+              onClick={() => promptDialog.current?.showModal()}
+              className="cursor-pointer text-xs font-medium text-muted hover:text-ink hover:underline"
+              title="Vollständige gesendete Prompts anzeigen"
+            >
+              Prompts
+            </button>
+          )}
           {(item.status === "pending" || item.status === "running") && (
             <button
               type="button"
@@ -234,6 +251,46 @@ const QueueItem = memo(function QueueItem({
           )}
         </div>
       </div>
+      <dialog
+        ref={promptDialog}
+        aria-label="Vollständige gesendete Prompts"
+        onClick={event => {
+          if (event.target !== event.currentTarget) return
+          const bounds = event.currentTarget.getBoundingClientRect()
+          if (
+            event.clientX < bounds.left ||
+            event.clientX > bounds.right ||
+            event.clientY < bounds.top ||
+            event.clientY > bounds.bottom
+          )
+            event.currentTarget.close()
+        }}
+        className="fixed inset-0 m-auto max-h-[85vh] w-[min(56rem,90vw)] overflow-auto rounded-2xl border border-line bg-surface p-6 text-ink backdrop:bg-black/50"
+      >
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="font-semibold">Vollständige gesendete Prompts</h2>
+          <button
+            type="button"
+            onClick={() => promptDialog.current?.close()}
+            className="cursor-pointer text-sm hover:underline"
+          >
+            Schließen
+          </button>
+        </div>
+        {item.prompts?.map((request, index) => (
+          <section key={index} className="mb-6">
+            <h3 className="mb-2 text-sm font-semibold">Anfrage {index + 1}</h3>
+            {request.messages.map((message, messageIndex) => (
+              <div key={messageIndex} className="mb-3">
+                <h4 className="text-xs font-semibold uppercase text-muted">{message.role}</h4>
+                <pre className="whitespace-pre-wrap break-words rounded-lg bg-surface-muted p-3 text-xs">
+                  {message.content}
+                </pre>
+              </div>
+            ))}
+          </section>
+        ))}
+      </dialog>
       {isExpanded && (
         <>
           {item.output && (
@@ -507,6 +564,11 @@ function PageContent() {
     let totalCostEuroCents: number | undefined =
       pending.totalCostEuroCents ?? (usedProvider === "openrouter" ? 0 : undefined)
     let latestOutput = pending.output
+    const prompts = [...(pending.prompts ?? [])]
+    const recordPrompt = (request: PromptRequest) => {
+      prompts.push({ messages: request.messages.map(message => ({ ...message })) })
+      setQueue(prev => prev.map(item => (item.id === pending.id ? { ...item, prompts: [...prompts] } : item)))
+    }
 
     const addCost = (response: { costEuroCents?: number }) => {
       if (response.costEuroCents === undefined) return
@@ -595,6 +657,7 @@ function PageContent() {
                   : message
               )
             }
+            recordPrompt(request)
             const response =
               usedProvider === "openrouter"
                 ? await generateWithOpenRouter({
@@ -616,6 +679,7 @@ function PageContent() {
           { role: "user" as const, content: userPrompt }
         ]
         const usedTemperature = pending.temperature ?? DEFAULT_TEMPERATURE
+        recordPrompt({ messages })
         const response =
           usedProvider === "openrouter"
             ? await generateWithOpenRouter({
@@ -678,6 +742,7 @@ function PageContent() {
             }
           ]
           const repairMaxTokens = usedProvider === "openrouter" && response.truncated ? maxTokens * 2 : maxTokens
+          recordPrompt({ messages: repairMessages })
           const repair =
             usedProvider === "openrouter"
               ? await generateWithOpenRouter({
@@ -717,6 +782,7 @@ function PageContent() {
               model: jobIllustrations.model,
               style: ILLUSTRATION_STYLES[jobIllustrations.style],
               prompt: description,
+              onPrompt: prompt => recordPrompt({ messages: [{ role: "image", content: prompt }] }),
               signal: controller.signal,
               onCost: costEuroCents => addCost({ costEuroCents })
             })
@@ -738,6 +804,7 @@ function PageContent() {
       // Save to results storage if successful
       if (finalOutput && !finalOutput.startsWith("⚠️")) {
         saveResultToStorage({
+          prompts,
           id: pending.id,
           timestamp: pending.timestamp,
           topic: pending.topic,
@@ -773,6 +840,7 @@ function PageContent() {
       const message =
         err instanceof Error ? err.message : typeof err === "string" ? err : "Unbekannter Fehler bei der Generierung."
       saveResultToStorage({
+        prompts,
         id: pending.id,
         timestamp: pending.timestamp,
         topic: pending.topic,

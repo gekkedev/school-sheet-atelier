@@ -301,7 +301,10 @@ export async function generateIllustration(options: {
   style: string
   signal: AbortSignal
   onCost?: (costEuroCents: number) => void
+  onPrompt?: (prompt: string) => void
 }) {
+  const prompt = `Eine einfache, kindgerechte Illustration für ein Grundschul-Arbeitsblatt. Bevorzugter Stil: ${options.style}, sofern fachlich passend; sonst einfache schematische Umrisszeichnung. Beachte Stilhinweise der Bildbeschreibung. Weißer Hintergrund, klare Formen, keine Schrift, keine Fotos. ${options.prompt}`
+  options.onPrompt?.(prompt)
   const response = await fetch("https://openrouter.ai/api/v1/images", {
     method: "POST",
     signal: options.signal,
@@ -309,7 +312,7 @@ export async function generateIllustration(options: {
     body: JSON.stringify({
       model: options.model,
       n: 1,
-      prompt: `Eine einfache, kindgerechte Illustration für ein Grundschul-Arbeitsblatt. Bevorzugter Stil: ${options.style}, sofern fachlich passend; sonst einfache schematische Umrisszeichnung. Beachte Stilhinweise der Bildbeschreibung. Weißer Hintergrund, klare Formen, keine Schrift, keine Fotos. ${options.prompt}`
+      prompt
     })
   })
   const body = await response.json()
