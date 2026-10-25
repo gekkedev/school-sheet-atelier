@@ -14,6 +14,7 @@ import {
   OPENROUTER_MODEL_KEY,
   OPENROUTER_TOKEN_KEY,
   openRouterLimitPercent,
+  passesOpenRouterPriceFilter,
   USD_TO_EUR,
   type OpenRouterKeyInfo,
   type OpenRouterModel
@@ -64,6 +65,7 @@ export function ProviderSettings({
   const [token, setToken] = useState("")
   const [models, setModels] = useState<OpenRouterModel[]>([])
   const [freeOnly, setFreeOnly] = useState(false)
+  const [excludeExpensive, setExcludeExpensive] = useState(true)
   const [excludeChina, setExcludeChina] = useState(true)
   const [excludeMusk, setExcludeMusk] = useState(true)
   const [error, setError] = useState("")
@@ -153,16 +155,18 @@ export function ProviderSettings({
     () =>
       models.filter(
         model =>
+          passesOpenRouterPriceFilter(model, estimateEuroCentsPerPage(model), excludeExpensive) &&
           (!freeOnly || isFreeOpenRouterModel(model)) &&
           (!excludeChina || !isChinaAffiliatedOpenRouterModel(model)) &&
           (!excludeMusk || !isMuskAffiliatedOpenRouterModel(model))
       ),
-    [freeOnly, excludeChina, excludeMusk, models]
+    [freeOnly, excludeExpensive, excludeChina, excludeMusk, models]
   )
   // Models requiring input images can return here if generation later supplies reference images.
   const visibleImageModels = imageModels.filter(
     model =>
       !model.imageInputRequired &&
+      passesOpenRouterPriceFilter(model, imageEuroCents(model), excludeExpensive) &&
       (!freeOnly || isFreeOpenRouterModel(model)) &&
       (!excludeChina || !isChinaAffiliatedOpenRouterModel(model)) &&
       (!excludeMusk || !isMuskAffiliatedOpenRouterModel(model))
@@ -176,7 +180,16 @@ export function ProviderSettings({
       !visibleImageModels.some(model => model.id === illustrations.model)
     )
       onIllustrationsChange({ ...illustrations, model: visibleImageModels[0]?.id ?? "" })
-  }, [illustrationsReady, imageModels, freeOnly, excludeChina, excludeMusk, illustrations, onIllustrationsChange])
+  }, [
+    illustrationsReady,
+    imageModels,
+    freeOnly,
+    excludeExpensive,
+    excludeChina,
+    excludeMusk,
+    illustrations,
+    onIllustrationsChange
+  ])
   const illustrationCost = illustrations.enabled && imageInfo ? imageEuroCents(imageInfo) : 0
   const selectedModelInfo = models.find(model => model.id === selectedModel)
   const limitPercent = keyInfo ? openRouterLimitPercent(keyInfo) : null
@@ -232,6 +245,14 @@ export function ProviderSettings({
               <label className="flex items-center gap-1.5 text-xs text-muted">
                 <input type="checkbox" checked={freeOnly} onChange={event => setFreeOnly(event.target.checked)} />
                 Nur kostenlose
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-muted">
+                <input
+                  type="checkbox"
+                  checked={excludeExpensive}
+                  onChange={event => setExcludeExpensive(event.target.checked)}
+                />
+                Teure Modelle ausschließen (&gt; 50 ct/Seite bzw. Bild)
               </label>
               <label
                 className="flex items-center gap-1.5 text-xs text-muted"

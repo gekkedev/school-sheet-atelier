@@ -121,6 +121,12 @@ export function estimateEuroCentsPerPage(model: OpenRouterModel): number {
   return estimatedUsd * USD_TO_EUR * 100
 }
 
+export function passesOpenRouterPriceFilter(model: OpenRouterModel, cents: number, excludeExpensive: boolean): boolean {
+  // Reject invalid negative rates even when other charges mask them in the total.
+  const hasNegativePrice = Object.values(model.pricing).some(value => Number(value) < 0 || Object.is(Number(value), -0))
+  return !hasNegativePrice && !(cents < 0 || Object.is(cents, -0)) && (!excludeExpensive || !(cents > 50))
+}
+
 export function formatEuroCents(value: number): string {
   if (!Number.isFinite(value)) return "??? ct"
   return `${value.toLocaleString(

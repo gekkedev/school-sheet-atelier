@@ -13,6 +13,7 @@ import {
   isMuskAffiliatedOpenRouterModel,
   isTextOnlyOpenRouterModel,
   openRouterLimitPercent,
+  passesOpenRouterPriceFilter,
   readOpenRouterStream,
   rankOpenRouterModels
 } from "../lib/openrouter"
@@ -120,6 +121,23 @@ const truncationCheck = readOpenRouterStream(truncatedStream, () => {}).then(res
   assert.equal(result.truncated, true)
 })
 assert.equal(estimateEuroCentsPerPage(free), 0)
+assert.equal(passesOpenRouterPriceFilter(free, 0, true), true)
+assert.equal(passesOpenRouterPriceFilter(free, 50, true), true)
+assert.equal(passesOpenRouterPriceFilter(free, 50.01, true), false)
+assert.equal(passesOpenRouterPriceFilter(free, 100_000, false), true)
+for (const excludeExpensive of [true, false]) {
+  assert.equal(passesOpenRouterPriceFilter(free, -100_000, excludeExpensive), false)
+  assert.equal(passesOpenRouterPriceFilter(free, -0, excludeExpensive), false)
+  for (const field of ["prompt", "completion", "request", "image"]) {
+    for (const value of ["-1", "-0"]) {
+      assert.equal(
+        passesOpenRouterPriceFilter({ ...free, pricing: { ...free.pricing, [field]: value } }, 1, excludeExpensive),
+        false
+      )
+    }
+  }
+}
+assert.equal(passesOpenRouterPriceFilter(free, NaN, true), true, "unknown image prices remain available")
 assert.ok(Math.abs(estimateEuroCentsPerPage(paid) - 0.0025 * USD_TO_EUR * 100) < 1e-10)
 assert.equal(openRouterLimitPercent({ limit: 10, limitRemaining: 2.5, usage: 99 }), 75)
 assert.equal(openRouterLimitPercent({ limit: 10, limitRemaining: 0, usage: 10 }), 100)
